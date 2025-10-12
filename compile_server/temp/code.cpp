@@ -2,6 +2,7 @@
 
 int main()
 {
-    std::cout<<"测试编译功能！\n";
+    std::cout<<"hello out\n";
+    std::cerr<<"hello err\n";
     return 0;
 }

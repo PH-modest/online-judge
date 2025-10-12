@@ -39,7 +39,8 @@ namespace ns_compiler
             }
             else if(pid == 0)
             {
-                int _stderr = open(PathUtil::Stderr(file_name).c_str(),O_CREAT | O_WRONLY ,0644);
+                umask(0);
+                int _stderr = open(PathUtil::CompileError(file_name).c_str(),O_CREAT | O_WRONLY ,0644);
                 if(_stderr < 0)
                 {
                     LOG(WARNING)<<"stderr文件创建失败！"<<"\n";
@@ -53,6 +54,7 @@ namespace ns_compiler
                 execlp("g++","g++","-o",PathUtil::Exe(file_name).c_str(),PathUtil::Src(file_name).c_str(),"-std=c++11",nullptr);
                 LOG(ERROR)<<"启动编译器g++失败！"<<"\n";
                 exit(2);
+                
             }
             else
             {

@@ -20,6 +20,7 @@ namespace ns_util
             return path_name;
         }
 
+        //编译时需要的临时文件
         //构建源文件完整路径+后缀名
         //test -> ./temp/test.cpp
         static std::string Src(const std::string &file_name)
@@ -31,11 +32,26 @@ namespace ns_util
         {
             return AddSuffix(file_name,".exe"); 
         }
+        static std::string CompileError(const std::string &file_name)
+        {
+            return AddSuffix(file_name,".compile_error");
+        }
+        
+        //运行时需要的临时文件
         //构建标准错误完整的路径+后缀名
         static std::string Stderr(const std::string &file_name)
         {
             return AddSuffix(file_name,".stderr");
         }
+        static std::string Stdin(const std::string &file_name)
+        {
+            return AddSuffix(file_name,".stdin");
+        }
+        static std::string Stdout(const std::string &file_name)
+        {
+            return AddSuffix(file_name,".stdout");
+        }
+
     };
 
     class FileUtil
@@ -48,6 +64,16 @@ namespace ns_util
                 return true;
             else 
                 return false;
+            
+        }
+
+        static std::string UniqFileName()
+        {
+            return "";
+        }
+
+        static bool WriteFile(const std::string& target, const std::string &code)
+        {
             
         }
     };
