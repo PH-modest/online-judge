@@ -6,6 +6,7 @@
 #include "../comm/util.hpp"
 
 #include <signal.h>
+#include <unistd.h>
 #include <jsoncpp/json/json.h>
 
 namespace ns_compile_and_run
@@ -53,6 +54,27 @@ namespace ns_compile_and_run
                 break;
             }
             return desc;
+        }
+
+        static void RemoveTempFile(const std::string& file_name)
+        {
+            std::string file_src = PathUtil::Src(file_name);
+            if(FileUtil::IsFileExist(file_src)) unlink(file_src.c_str());
+
+            std::string file_compiler_error = PathUtil::CompileError(file_name);
+            if(FileUtil::IsFileExist(file_compiler_error)) unlink(file_compiler_error.c_str());
+
+            std::string file_execute = PathUtil::Exe(file_name);
+            if(FileUtil::IsFileExist(file_execute)) unlink(file_execute.c_str());
+
+            std::string file_stdin = PathUtil::Stdin(file_name);
+            if(FileUtil::IsFileExist(file_stdin)) unlink(file_stdin.c_str());
+
+            std::string file_stdout = PathUtil::Stdout(file_name);
+            if(FileUtil::IsFileExist(file_stdout)) unlink(file_stdout.c_str());
+
+            std::string file_stderr = PathUtil::Stderr(file_name);
+            if(FileUtil::IsFileExist(file_stderr)) unlink(file_stderr.c_str());
         }
 
         /*************************************
@@ -144,6 +166,9 @@ namespace ns_compile_and_run
 
             Json::StyledWriter writer;
             *out_json = writer.write(out_value);
+
+            //调试时关闭
+            //RemoveTempFile(file_name);
         }
     };
 }
