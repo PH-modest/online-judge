@@ -7,6 +7,7 @@
 #include <sys/time.h>
 #include <atomic>
 #include <fstream>
+#include <boost/algorithm/string.hpp>
 
 namespace ns_util
 {
@@ -124,6 +125,15 @@ namespace ns_util
             }
             in.close();
             return true;
+        }
+    };
+
+    class StringUtil
+    {
+    public:
+        static void SplitString(const std::string &str, std::vector<std::string> *tokens,const std::string &sep)
+        {
+            boost::split(*tokens,str,boost::is_any_of(sep),boost::algorithm::token_compress_on);
         }
     };
 

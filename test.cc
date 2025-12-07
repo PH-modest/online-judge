@@ -1,12 +1,21 @@
 #include <iostream>
-#include <sys/time.h>
-#include <sys/resource.h>
-#include <unistd.h>
-#include <jsoncpp/json/json.h>
+#include <vector>
+#include <boost/algorithm/string.hpp>
+// #include <sys/time.h>
+// #include <sys/resource.h>
+// #include <unistd.h>
+// #include <jsoncpp/json/json.h>
 
 int main()
 {
-    
+    std::vector<std::string> tokens;
+    std::string str = "1  判断回文数 简单 1  30000";
+    const std::string sep = " ";
+    boost::split(tokens,str,boost::is_any_of(sep),boost::algorithm::token_compress_on);
+    for(auto& e : tokens)
+    {
+        std::cout<<e<<std::endl;
+    }
     return 0;
 }
 
