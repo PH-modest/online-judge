@@ -77,6 +77,7 @@ namespace ns_model
             }
             LOG(INFO) << "加载题库...成功!" << "\n";
             in.close();
+            return true;
         }
 
         bool GetAllQuestions(std::vector<Question> *out)
