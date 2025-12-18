@@ -36,7 +36,19 @@ namespace ns_view
 
         void OneExpandHtml(const ns_model::Question& question,std::string *html)
         {
-            
+            //形成路径
+            std::string src_html = template_path + "one_question.html";
+            //形成数据字典
+            ctemplate::TemplateDictionary root("one_question");
+            root.SetValue("number",question.number);
+            root.SetValue("title",question.title);
+            root.SetValue("star",question.star);
+            root.SetValue("desc",question.desc);
+            root.SetValue("pre_code",question.header);
+            //获取网页
+            ctemplate::Template *tpl = ctemplate::Template::GetTemplate(src_html,ctemplate::DO_NOT_STRIP);
+            //开始完成渲染功能
+            tpl->Expand(html,&root);
         }
     };
 }
