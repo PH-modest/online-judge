@@ -95,7 +95,7 @@ namespace ns_model
             return true;
         }
 
-        bool GetOneQuestions(const std::string &number, Question *q)
+        bool GetOneQuestion(const std::string &number, Question *q)
         {
             const auto &iter = _questions.find(number);
             if (iter == _questions.end())

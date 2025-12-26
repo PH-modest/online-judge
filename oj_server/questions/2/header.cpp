@@ -10,6 +10,5 @@ class Solution
         int Max(const vector<int> &v)
         {
             //将你的代码写在下面
-
         }
 };

@@ -51,7 +51,7 @@ namespace ns_compiler
                 //程序替换，并不影响进程的文件描述符表
                 //子进程：调用编译器，完成对代码的编译工作
                 //g++ -o test.exe test.cpp -std=c++11
-                execlp("g++","g++","-o",PathUtil::Exe(file_name).c_str(),PathUtil::Src(file_name).c_str(),"-std=c++11",nullptr);
+                execlp("g++","g++","-o",PathUtil::Exe(file_name).c_str(),PathUtil::Src(file_name).c_str(),"-D","COMPILE_ONLINE","-std=c++11",nullptr);
                 LOG(ERROR)<<"启动编译器g++失败！"<<"\n";
                 exit(2);
                 
