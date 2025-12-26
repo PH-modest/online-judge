@@ -168,7 +168,7 @@ namespace ns_compile_and_run
             *out_json = writer.write(out_value);
 
             //调试时关闭
-            //RemoveTempFile(file_name);
+            RemoveTempFile(file_name);
         }
     };
 }

@@ -146,9 +146,46 @@ namespace ns_control
         }
         void OfflineMachine(const int id)
         {
+            _mutex.lock();
+            for(auto iter = _online.begin();iter!= _online.end();++iter)
+            {
+                if(*iter == id)
+                {
+                    _online.erase(iter);
+                    _offline.push_back(id);
+                    break;
+                }
+            }
+            _mutex.unlock();
         }
+
         void OnlineMachine()
         {
+            // 我们统一上线 
+            _mutex.lock();
+            _online.insert(_online.end(),_offline.begin(),_offline.end());
+            _offline.erase(_offline.begin(),_offline.end());
+            _mutex.unlock();
+            LOG(INFO) << "所有主机上线了！\n";
+        }
+
+        //for test
+        void ShowMachines()
+        {
+            _mutex.lock();
+            std::cout<<"当前在线主机列表:";
+            for(auto & id : _online)
+            {
+                std::cout<<id<<" ";
+            }
+            std::cout<<"\n";
+            std::cout<<"当前离线主机列表:";
+            for(auto & id : _offline)
+            {
+                std::cout<<id<<" ";
+            }
+            std::cout<<"\n";
+            _mutex.unlock();
         }
 
     private:
@@ -252,9 +289,14 @@ namespace ns_control
                 if(auto res = cli.Post("/compile_and_run", compile_string, "application/json;charset=utf-8"))
                 {
                     // 5. 将结果赋值给out_json
-                    *out_json = res->body;
-                    m->DecLoad();
-                    break;
+                    if(res->status == 200)
+                    {
+                        *out_json = res->body;
+                        m->DecLoad();
+                        LOG(INFO)<<"请求编译和运行服务成功..."<<"\n";
+                        break;
+                    }
+                    m->DecLoad();                    
                 }
                 else
                 {
@@ -262,6 +304,7 @@ namespace ns_control
                     LOG(ERROR) << "当前请求的主机id: " << id << "详情: "<< m->_ip<<":"<< m->_port<<" 可能已经离线"<<"\n";
                     m->DecLoad();
                     _load_blance.OfflineMachine(id);
+                    _load_blance.ShowMachines(); // 用来调试
                 }
 
             }

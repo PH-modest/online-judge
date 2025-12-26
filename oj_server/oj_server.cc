@@ -29,10 +29,14 @@ int main()
         rsp.set_content(html,"text/html;charset=utf-8"); });
 
     // 用户提交代码，使用我们的判题功能（1.每题的测试用例 2.compile_and_run）
-    svr.Get(R"(/judge/(\d+))", [](const Request &req, Response &rsp)
+    svr.Post(R"(/judge/(\d+))", [&ctrl](const Request &req, Response &rsp)
             {
         std::string number = req.matches[1];
-        rsp.set_content("指定题目判题："+number,"text/plain;charset=utf-8"); });
+        std::string result_json;
+        ctrl.Judge(number,req.body,&result_json);
+        rsp.set_content(result_json,"application/json;charset=utf-8");
+        //rsp.set_content("指定题目判题："+number,"text/plain;charset=utf-8"); 
+        });
 
     svr.set_base_dir("./wwwroot");
     svr.listen("0.0.0.0", 8102);

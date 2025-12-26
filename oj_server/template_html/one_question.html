@@ -1,13 +1,188 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{number}}({{title}})</title>
+    <!-- 引入ACE CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.6/ace.js" type="text/javascript"
+        charset="utf-8"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.6/ext-language_tools.js" type="text/javascript"
+        charset="utf-8"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+        }
+
+        .container .navbar {
+            width: 100%;
+            height: 50px;
+            background-color: black;
+            /* 给父级标签设置overflow，取消后续float带来的影响 */
+            overflow: hidden;
+        }
+
+        .container .navbar a {
+            /* 设置a标签是行内块元素，允许你设置宽度 */
+            display: inline-block;
+            /* 设置a标签的宽度,a标签默认行内元素，无法设置宽度 */
+            width: 80px;
+            /* 设置字体颜色 */
+            color: white;
+            /* 设置字体的大小 */
+            font-size: large;
+            /* 设置文字的高度和导航栏一样的高度 */
+            line-height: 50px;
+            /* 去掉a标签的下划线 */
+            text-decoration: none;
+            /* 设置a标签中的文字居中 */
+            text-align: center;
+        }
+
+        /* 设置鼠标事件 */
+        .container .navbar a:hover {
+            background-color: green;
+        }
+
+        .container .navbar .login {
+            float: right;
+        }
+
+        .container .part1{
+            width: 100%;
+            height: 600px;
+            overflow: hidden;
+        }
+
+        .container .part1 .left_desc{
+            width: 50%;
+            height: 600px;
+            float: left;
+            overflow: scroll;
+        }
+
+        .container .part1 .left_desc h4{
+            padding-top: 10px;
+            padding-left: 10px;
+        }
+
+        .container .part1 .left_desc pre{
+            padding-top: 10px;
+            padding-left: 10px;
+            font-size: medium;
+            font-family:Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+        }
+
+        .container .part1 .right_code{
+            width: 50%;
+            float: right;
+        }
+
+        .container .part1 .right_code .ace_editor{
+            height: 600px;
+        }
+
+        .container .part2 {
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .container .part2 .result{
+            width: 300px;
+            float: left;
+        }
+
+        .container .part2 .btn-submit{
+            width: 120px;
+            height: 50px;
+            font-size: large;
+            float: right;
+            background-color: #20b597;
+            color: #FFF;
+            border-radius: 0.5ch;
+            border: 0px;
+            margin-top: 10px;
+            margin-right: 10px;
+        }
+
+        .container .part2 button:hover{
+            background-color: #12a487;
+        }
+    </style>
 </head>
+
 <body>
-    <h4>{{number}}.{{title}}.{{star}}</h4>
-    <p>{{desc}}</p>
-    <textarea name="code" cols="30" rows="10">{{pre_code}}</textarea>
+    <div class="container">
+
+        <div class="navbar">
+            <!-- 导航栏 -->
+            <div class="navbar">
+                <a href="/">首页</a>
+                <a href="/all_questions">题库</a>
+                <a href="#">竞赛</a>
+                <a href="#">讨论</a>
+                <a class="login" href="#">登录</a>
+            </div>
+        </div>
+
+        <!-- 左右呈现：题目描述和预设代码 -->
+        <div class="part1">
+            <div class="left_desc">
+                <h4>{{number}}.{{title}}_{{star}}</h4>
+                <pre>{{desc}}</pre>
+            </div>
+
+            <div class="right_code">
+                <!-- ace 需要的标签 -->
+                <pre id="code" class="ace_editor"><textarea class="ace_text-input"> {{pre_code}} </textarea></pre>
+            </div>
+        </div>
+
+        <!-- 提交并且得到结果，并显示 -->
+        <div class="part2">
+            <div class="result">输出结果</div>
+            <button class="btn-submit" onclick="submit()">提交代码</button>
+        </div>
+
+    </div>
+
+    <script>
+        //初始化对象
+        editor = ace.edit("code");
+        //设置风格和语言
+        // 主题大全：http://www.manongjc.com/detail/25-cfpdrwkkivkikmk.html
+        editor.setTheme("ace/theme/monokai");
+        editor.session.setMode("ace/mode/c_cpp");
+        // 字体大小
+        editor.setFontSize(16);
+        // 设置默认制表符的大小:
+        editor.getSession().setTabSize(4);
+        // 设置只读（true时只读，用于展示代码）
+        editor.setReadOnly(false);
+        // 启用提示菜单
+        ace.require("ace/ext/language_tools");
+        editor.setOptions({
+            enableBasicAutocompletion: true,
+            enableSnippets: true,
+            enableLiveAutocompletion: true
+        });
+
+        function submit() {
+            alert("嘿嘿!");
+            // 1. 收集当前页面的有关数据, 1. 题号 2.代码
+            // 2. 构建json，并向后台发起请求
+            // 3. 得到结果，解析并显示到 result中
+        }
+    </script>
 </body>
+
 </html>
