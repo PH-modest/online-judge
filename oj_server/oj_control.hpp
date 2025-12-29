@@ -6,6 +6,7 @@
 #include <mutex>
 #include <fstream>
 #include <cassert>
+#include <algorithm>
 #include <jsoncpp/json/json.h>
 
 #include "../comm/log.hpp"
@@ -32,27 +33,40 @@ namespace ns_control
         {
         }
 
-        //提升主机负载
+        // 提升主机负载
         void IncLoad()
         {
-            if(_mutex) _mutex->lock();
+            if (_mutex)
+                _mutex->lock();
             ++_load;
-            if(_mutex) _mutex->unlock();
+            if (_mutex)
+                _mutex->unlock();
         }
-        //减少主机负载
+        // 减少主机负载
         void DecLoad()
         {
-            if(_mutex) _mutex->lock();
+            if (_mutex)
+                _mutex->lock();
             --_load;
+            if (_mutex)
+                _mutex->unlock();
+        }
+        // 重置主机负载
+        void ResetLoad()
+        {
+            if(_mutex) _mutex->lock();
+            _load = 0;
             if(_mutex) _mutex->unlock();
         }
-        //获取主机负载
+        // 获取主机负载
         uint64_t Load()
         {
-            uint64_t tmp = 0; 
-            if(_mutex) _mutex->lock();
+            uint64_t tmp = 0;
+            if (_mutex)
+                _mutex->lock();
             tmp = _load;
-            if(_mutex) _mutex->unlock();
+            if (_mutex)
+                _mutex->unlock();
             return tmp;
         }
 
@@ -147,9 +161,13 @@ namespace ns_control
         void OfflineMachine(const int id)
         {
             _mutex.lock();
-            for(auto iter = _online.begin();iter!= _online.end();++iter)
+            for (auto iter = _online.begin(); iter != _online.end(); ++iter)
             {
                 if(*iter == id)
+                {
+                    _machines[id].ResetLoad();
+                }
+                if (*iter == id)
                 {
                     _online.erase(iter);
                     _offline.push_back(id);
@@ -161,30 +179,30 @@ namespace ns_control
 
         void OnlineMachine()
         {
-            // 我们统一上线 
+            // 我们统一上线
             _mutex.lock();
-            _online.insert(_online.end(),_offline.begin(),_offline.end());
-            _offline.erase(_offline.begin(),_offline.end());
+            _online.insert(_online.end(), _offline.begin(), _offline.end());
+            _offline.erase(_offline.begin(), _offline.end());
             _mutex.unlock();
             LOG(INFO) << "所有主机上线了！\n";
         }
 
-        //for test
+        // for test
         void ShowMachines()
         {
             _mutex.lock();
-            std::cout<<"当前在线主机列表:";
-            for(auto & id : _online)
+            std::cout << "当前在线主机列表:";
+            for (auto &id : _online)
             {
-                std::cout<<id<<" ";
+                std::cout << id << " ";
             }
-            std::cout<<"\n";
-            std::cout<<"当前离线主机列表:";
-            for(auto & id : _offline)
+            std::cout << "\n";
+            std::cout << "当前离线主机列表:";
+            for (auto &id : _offline)
             {
-                std::cout<<id<<" ";
+                std::cout << id << " ";
             }
-            std::cout<<"\n";
+            std::cout << "\n";
             _mutex.unlock();
         }
 
@@ -204,8 +222,8 @@ namespace ns_control
     class Control
     {
     private:
-        ns_model::Model _model; // 提供后台数据
-        View _view;             // 提供html渲染功能
+        ns_model::Model _model;  // 提供后台数据
+        View _view;              // 提供html渲染功能
         LoadBlance _load_blance; // 核心负载均衡器
     public:
         Control()
@@ -215,6 +233,11 @@ namespace ns_control
         {
         }
 
+        void RecoveryMachine()
+        {
+            _load_blance.OnlineMachine();
+        }
+
         // 根据题目数据构建网页
         bool AllQuestions(std::string *html)
         {
@@ -222,6 +245,8 @@ namespace ns_control
             std::vector<ns_model::Question> all;
             if (_model.GetAllQuestions(&all))
             {
+                sort(all.begin(), all.end(), [](const ns_model::Question &q1, const ns_model::Question &q2)
+                     { return atoi(q1.number.c_str()) < atoi(q2.number.c_str()); });
                 // 获取题目信息成功，将所有题目数据构建成网页
                 _view.AllExpandHtml(all, html);
             }
@@ -253,14 +278,15 @@ namespace ns_control
         // input: ""
         void Judge(const std::string &number, const std::string in_json, std::string *out_json)
         {
+            // LOG(DEBUG)<<in_json<<" \nnumber: "<<number<<"\n";
             // 0. 根据题目编号，直接拿到对应的题目细节
             ns_model::Question q;
-            _model.GetOneQuestion(number,&q);
-            
+            _model.GetOneQuestion(number, &q);
+
             // 1. in_json进行反序列化，得到题目的id、用户提交的代码、input
             Json::Reader reader;
             Json::Value in_value;
-            reader.parse(in_json,in_value);
+            reader.parse(in_json, in_value);
 
             // 2. 重新拼接用户代码+测试用例代码，形成新的代码
             std::string code = in_value["code"].asString();
@@ -270,43 +296,43 @@ namespace ns_control
             compile_value["cpu_limit"] = q.cpu_limit;
             compile_value["mem_limit"] = q.mem_limit;
             Json::FastWriter writer;
-            std::string compile_string  = writer.write(compile_value);
+            std::string compile_string = writer.write(compile_value);
 
             // 3. 选择负载最低的主机(差错处理)
             // 规则：一直选择，直到主机可用，否则，就是全部挂掉
-            while(true)
+            while (true)
             {
                 int id = 0;
                 Machine *m = nullptr;
-                if(!_load_blance.SmartChoice(&id,&m))
+                if (!_load_blance.SmartChoice(&id, &m))
                 {
                     break;
                 }
-                LOG(INFO) << "选择主机成功,主机id: " << id << "详情: "<< m->_ip<<":"<< m->_port<<"\n";
+
                 // 4. 然后发起http请求，得到结果
-                httplib::Client cli(m->_ip,m->_port);
+                httplib::Client cli(m->_ip, m->_port);
                 m->IncLoad();
-                if(auto res = cli.Post("/compile_and_run", compile_string, "application/json;charset=utf-8"))
+                LOG(INFO) << "选择主机成功, 主机id: " << id << ", 详情: " << m->_ip << ":" << m->_port << ", 当前主机的负载是: " << m->Load() << "\n";
+                if (auto res = cli.Post("/compile_and_run", compile_string, "application/json;charset=utf-8"))
                 {
                     // 5. 将结果赋值给out_json
-                    if(res->status == 200)
+                    if (res->status == 200)
                     {
                         *out_json = res->body;
                         m->DecLoad();
-                        LOG(INFO)<<"请求编译和运行服务成功..."<<"\n";
+                        LOG(INFO) << "请求编译和运行服务成功..." << "\n";
                         break;
                     }
-                    m->DecLoad();                    
+                    m->DecLoad();
                 }
                 else
                 {
-                    //请求失败
-                    LOG(ERROR) << "当前请求的主机id: " << id << "详情: "<< m->_ip<<":"<< m->_port<<" 可能已经离线"<<"\n";
+                    // 请求失败
+                    LOG(ERROR) << "当前请求的主机id: " << id << "详情: " << m->_ip << ":" << m->_port << " 可能已经离线" << "\n";
                     m->DecLoad();
                     _load_blance.OfflineMachine(id);
                     _load_blance.ShowMachines(); // 用来调试
                 }
-
             }
         }
     };
