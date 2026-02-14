@@ -12,7 +12,8 @@
 #include "../comm/log.hpp"
 #include "../comm/util.hpp"
 #include "../comm/httplib.h"
-#include "oj_model.hpp"
+// #include "oj_model.hpp"
+#include "oj_model_sql.hpp"
 #include "oj_view.hpp"
 
 namespace ns_control

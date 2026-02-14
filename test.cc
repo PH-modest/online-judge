@@ -1,26 +1,35 @@
-#include <iostream>
-#include <string>
-#include <ctemplate/template.h>
+#include <mysql/mysql.h>
+#include <stdio.h>
 
-int main()
+int main() 
 {
-    std::string in_html = "./test.html";
-    std::string value = "oj系统";
-
-    // 形成数据字典
-    ctemplate::TemplateDictionary root("test"); // unordered_map<> test;
-    root.SetValue("key",value);                 // test.insert({});
-
-    // 获取被渲染网页对象
-    ctemplate::Template *tpl = ctemplate::Template::GetTemplate(in_html,ctemplate::DO_NOT_STRIP);
-
-    // 添加字典数据到网页中
-    std::string out_html;
-    tpl->Expand(&out_html,&root);
-
-    // 完成了渲染
-    std::cout<<out_html<<std::endl;
+    printf("MySQL Client Version: %s\n", mysql_get_client_info());
+    return 0;
 }
+
+// #include <iostream>
+// #include <string>
+// #include <ctemplate/template.h>
+
+// int main()
+// {
+//     std::string in_html = "./test.html";
+//     std::string value = "oj系统";
+
+//     // 形成数据字典
+//     ctemplate::TemplateDictionary root("test"); // unordered_map<> test;
+//     root.SetValue("key",value);                 // test.insert({});
+
+//     // 获取被渲染网页对象
+//     ctemplate::Template *tpl = ctemplate::Template::GetTemplate(in_html,ctemplate::DO_NOT_STRIP);
+
+//     // 添加字典数据到网页中
+//     std::string out_html;
+//     tpl->Expand(&out_html,&root);
+
+//     // 完成了渲染
+//     std::cout<<out_html<<std::endl;
+// }
 
 
 
