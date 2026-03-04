@@ -28,7 +28,7 @@ namespace ns_compile_and_run
             switch (code)
             {
             case 0:
-                desc = "编译运行成功";
+                desc = "运行完毕";
                 break;
             case -1:
                 desc = "提交的代码为空";
@@ -41,16 +41,17 @@ namespace ns_compile_and_run
                 FileUtil::ReadFile(PathUtil::CompileError(file_name),&desc,true);
                 break;
             case SIGABRT: // 6
-                desc = "内存超过范围";
+            case SIGSEGV: // 11
+                desc = "运行错误：内存越界或段错误";
                 break;
             case SIGXCPU: // 24
-                desc = "CPU使用超时";
+                desc = "运行超时";
                 break;
             case SIGFPE: // 8
-                desc = "浮点数溢出";
+                desc = "运行错误：浮点数溢出或除零";
                 break;
             default:
-                desc = "未知：" + std::to_string(code);
+                desc = "运行错误：收到信号 " + std::to_string(code);
                 break;
             }
             return desc;
