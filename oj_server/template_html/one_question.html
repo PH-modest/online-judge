@@ -59,15 +59,15 @@
 
         .container .part1 {
             width: 100%;
-            height: 600px;
+            height: calc(100vh - 140px);
             overflow: hidden;
         }
 
         .container .part1 .left_desc {
             width: 50%;
-            height: 600px;
+            height: 100%;
             float: left;
-            overflow: scroll;
+            overflow: auto;
         }
 
         .container .part1 .left_desc h3 {
@@ -84,20 +84,26 @@
 
         .container .part1 .right_code {
             width: 50%;
+            height: 100%;
             float: right;
         }
 
         .container .part1 .right_code .ace_editor {
-            height: 600px;
+            height: 100%;
+            margin: 0;
         }
 
         .container .part2 {
             width: 100%;
             overflow: hidden;
+            padding: 15px 20px;
+            box-sizing: border-box;
+            background-color: #fdfdfd;
+            border-top: 1px solid #eee;
         }
 
         .container .part2 .result {
-            width: 300px;
+            width: 80%;
             float: left;
         }
 
@@ -112,19 +118,56 @@
             border: 0px;
             margin-top: 10px;
             margin-right: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
 
         .container .part2 button:hover {
             background-color: #12a487;
         }
 
-        .container .part2 .result{
-            margin-top: 15px;
-            margin-left: 15px;
-        }
-
         .container .part2 .result pre{
             font-size: large;
+        }        
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .status-ac { background-color: #28a745; } /* 绿色 AC */
+        .status-wa { background-color: #dc3545; } /* 红色 WA */
+        .status-ce { background-color: #ffc107; color: #333; } /* 黄色 CE */
+        .status-re { background-color: #6c757d; } /* 灰色 RE */
+        .status-tle { background-color: #fd7e14; } /* 橙色 TLE */
+
+        .details-box {
+            background-color: #f8f9fa;
+            border-left: 5px solid #ccc;
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 4px;
+            max-height: 250px;
+            overflow-y: auto;
+            overflow-x: auto;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 16px;
+            line-height: 1.5;
+            color: #333;
+        }
+
+        .details-box.border-ac { border-left-color: #28a745; }
+        .details-box.border-wa { border-left-color: #dc3545; }
+        .details-box.border-ce { border-left-color: #ffc107; }
+        
+        .container .part2 .btn-submit:active {
+            transform: scale(0.95);
         }
     </style>
 </head>
@@ -211,38 +254,60 @@
             function show_result(data) {
                 // 拿到result结果标签
                 var result_div = $(".container .part2 .result");
-                result_div.empty();
+                result_div.empty(); // 清空上次结果
 
                 // 首先拿到结果的状态码和原因结果
                 var status = data.status;
                 var reason = data.reason;
+                var stdout = data.stdout;
+                var stderr = data.stderr;
 
-                var reason_lable = $("<p>", {
-                    text: reason
-                });
+                var badge_class = "";
+                var border_class = "";
+                var status_text = "";
+                var detail_text = "";             
 
-                reason_lable.appendTo(result_div);
-
-
+                // 根据状态码判断最终的 OJ 状态
                 if (status == 0) {
-                    // 请求成功，编译运行没有问题
-                    var stdout = data.stdout;
-                    var stderr = data.stderr;
-
-                    var stdout_lable = $("<pre>", {
-                        text: stdout
-                    });
-
-                    var stderr_lable = $("<pre>", {
-                        text: stderr
-                    });
-
-                    stdout_lable.appendTo(result_div);
-                    stderr_lable.appendTo(result_div);
+                    // 编译并运行成功，检查输出内容判断是否逻辑正确
+                    if (stdout.indexOf("Failed") !== -1 || stdout.indexOf("没有通过") !== -1) {
+                        badge_class = "status-wa";
+                        border_class = "border-wa";
+                        status_text = "解答错误 (Wrong Answer)";
+                        detail_text = stdout;
+                    } else {
+                        badge_class = "status-ac";
+                        border_class = "border-ac";
+                        status_text = "通过 (Accepted)";
+                        detail_text = stdout;
+                    }
+                } else if (status == -3) {
+                    badge_class = "status-ce";
+                    border_class = "border-ce";
+                    status_text = "编译错误 (Compile Error)";
+                    detail_text = reason; // 后端读取的 compile_error 文件内容
+                } else if (status == 24) { // SIGXCPU
+                    badge_class = "status-tle";
+                    status_text = "运行超时 (Time Limit Exceeded)";
+                    detail_text = "代码执行超出了题目限制的时间，请检查是否存在死循环或优化算法。";
+                } else {
+                    badge_class = "status-re";
+                    status_text = "运行错误 (Runtime Error)";
+                    detail_text = reason + "\n" + (stderr ? stderr : "");
                 }
-                else {
-                    // 编译运行报错
-                }
+
+                // 动态构造美化后的 HTML
+                var badge_html = $("<div>", { class: "status-badge " + badge_class, text: status_text });
+                var details_html = $("<div>", { class: "details-box " + border_class });
+                var pre_html = $("<pre>", { text: detail_text });
+
+                details_html.append(pre_html);
+                result_div.append(badge_html).append(details_html);
+
+                window.scrollTo({
+                    top: document.body.scrollHeight,
+                    behavior: "smooth"
+                });
             }
         }
     </script>
