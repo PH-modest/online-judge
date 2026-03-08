@@ -50,6 +50,9 @@ namespace ns_compile_and_run
             case SIGFPE: // 8
                 desc = "运行错误：浮点数溢出或除零";
                 break;
+            case 31: // SIGSYS 信号，宏定义在不同环境可能不同
+                desc = "运行错误：触发系统安全沙箱，禁止使用危险系统调用";
+                break;
             default:
                 desc = "运行错误：收到信号 " + std::to_string(code);
                 break;
