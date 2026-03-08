@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <seccomp.h>
 #include "../comm/log.hpp"
 #include "../comm/util.hpp"
 
@@ -45,6 +46,36 @@ namespace ns_runner
             setrlimit(RLIMIT_AS,&mem_rlimit);
         }
 
+        static void SetSeccomp()
+        {
+            // 1、初始化 seccomp 规则，默认允许所有系统调用(SCMP_ACT_ALLOW)
+            scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ALLOW);
+            if(ctx == NULL)
+            {
+                LOG(FATAL)<<"初始化 Seccomp 失败\n";
+                exit(1); // 规则创建失败，直接退出，绝不执行用户代码
+            }
+
+            // 2、添加黑名单：拦截并杀死尝试执行危险调用的进程(SCMP_ACT_KILL)
+            // 禁止创建新进程（防止系统炸弹）
+            seccomp_rule_add(ctx, SCMP_ACT_KILL, SCMP_SYS(fork), 0);
+            seccomp_rule_add(ctx, SCMP_ACT_KILL, SCMP_SYS(vfork), 0);
+            seccomp_rule_add(ctx, SCMP_ACT_KILL, SCMP_SYS(clone), 0);
+
+            // 禁止网络通信(防止发起 DDoS 或反弹 shell)
+            seccomp_rule_add(ctx, SCMP_ACT_KILL, SCMP_SYS(socket), 0);
+            seccomp_rule_add(ctx, SCMP_ACT_KILL, SCMP_SYS(connect), 0);
+
+            // 3、加载规则到内核
+            if(seccomp_load(ctx) != 0)
+            {
+                LOG(FATAL) << "加载 Seccomp 规则失败\n";
+                seccomp_release(ctx);
+                exit(1);
+            }
+            seccomp_release(ctx);
+        }
+
         static int Run(const std::string& file_name,int cpu_limit,int mem_limit)
         {
             std::string _execute = PathUtil::Exe(file_name);
@@ -79,6 +110,7 @@ namespace ns_runner
                 dup2(_stderr_fd,2);
 
                 SetProcLimit(cpu_limit, mem_limit);
+                SetSeccomp();
                 execl(_execute.c_str()/*我要执行谁*/,_execute.c_str()/*我想要怎么执行*/,nullptr);
                 exit(1);
             }
