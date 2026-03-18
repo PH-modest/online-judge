@@ -21,7 +21,7 @@ int main()
 {
     // 数据库测试
     /*ns_model::UserModel user_model;
-    
+
     // 1. 测试登录我们在数据库里手动插入的 admin 账号
     ns_model::User u;
     if (user_model.Login("admin", "123456", &u)) {
@@ -31,13 +31,13 @@ int main()
 
     signal(SIGQUIT, Recovery);
     // 用户请求的服务路由功能
-    Server svr;  
-    ns_control::Control ctrl;  
+    Server svr;
+    ns_control::Control ctrl;
     ctrl_ptr = &ctrl;
     ns_model::UserModel user_model; // 数据库交互类
 
     // 用户注册接口
-    svr.Post("/register", [&user_model](const Request &req, Response &rsp) 
+    svr.Post("/register", [&user_model](const Request &req, Response &rsp)
     {
         Json::Reader reader;
         Json::Value req_json;
@@ -57,11 +57,11 @@ int main()
             }
         }
         Json::FastWriter writer;
-        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); 
     });
 
     // 用户登录接口
-    svr.Post("/login", [&user_model](const Request &req, Response &rsp) 
+    svr.Post("/login", [&user_model](const Request &req, Response &rsp)
     {
         Json::Reader reader;
         Json::Value req_json;
@@ -88,7 +88,7 @@ int main()
             }
         }
         Json::FastWriter writer;
-        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); 
     });
 
     // 获取所有题目列表
@@ -111,14 +111,14 @@ int main()
         rsp.set_content(html,"text/html;charset=utf-8"); 
     });
 
-    // 用户提交代码，使用我们的判题功能（1.每题的测试用例 2.compile_and_run）
-    svr.Post(R"(/judge/(\d+))", [&ctrl](const Request &req, Response &rsp)
+    // 用户提交代码，使用我们的判题功能
+    svr.Post(R"(/judge/(\d+))", [&ctrl, &user_model](const Request &req, Response &rsp)
     {
         Json::Value rsp_json;
         Json::FastWriter writer;
 
         // 权限校验拦截器：检查 HTTP 头里有没有 Authorization 字段
-        if (!req.has_header("Authorization")) 
+        if (!req.has_header("Authorization"))
         {
             rsp_json["status"] = -2;
             rsp_json["reason"] = "未登录，无权提交代码！请先登录。";
@@ -131,7 +131,7 @@ int main()
         std::string username = "";
 
         // 验证 Token 是否是被伪造的或者过期了
-        if (!ns_util::JwtUtil::VerifyToken(token, &user_id, &username, &role)) 
+        if (!ns_util::JwtUtil::VerifyToken(token, &user_id, &username, &role))
         {
             rsp_json["status"] = -2;
             rsp_json["reason"] = "登录凭证已过期或无效，请重新登录。";
@@ -145,8 +145,51 @@ int main()
         std::string number = req.matches[1];
         std::string result_json;
         ctrl.Judge(number, req.body, &result_json);
+
+        Json::Reader reader;
+        Json::Value judge_result;
+        if(reader.parse(result_json, judge_result))
+        {
+            int status = judge_result["status"].asInt();
+            bool is_passed = (status == 0);
+            user_model.UpdataUserSubmitState(user_id, is_passed);
+        }
+
         rsp.set_content(result_json, "application/json;charset=utf-8");
         // rsp.set_content("指定题目判题："+number,"text/plain;charset=utf-8");
+    });
+
+    svr.Get("/leaderboard", [&user_model](const Request &req, Response &rsp)
+    {
+        std::vector<ns_model::User> board;
+        Json::Value rsp_json;
+        Json::Value user_list(Json::arrayValue);
+
+        if (user_model.GetGlobalLeaderboard(&board)) 
+        {
+            rsp_json["status"] = 0;
+            rsp_json["reason"] = "获取排行榜成功";
+            for (const auto& u : board) 
+            {
+                Json::Value user_json;
+                user_json["username"] = u.username;
+                user_json["pass_count"] = u.pass_count;
+                user_json["submit_count"] = u.submit_count;
+                // 计算通过率
+                double pass_rate = u.submit_count == 0 ? 0.0 : (double)u.pass_count / u.submit_count * 100.0;
+                user_json["pass_rate"] = pass_rate;
+                user_list.append(user_json);
+            }
+            rsp_json["data"] = user_list;
+        } 
+        else 
+        {
+            rsp_json["status"] = -1;
+            rsp_json["reason"] = "获取排行榜失败";
+        }
+
+        Json::FastWriter writer;
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); 
     });
 
     svr.set_base_dir("./wwwroot");

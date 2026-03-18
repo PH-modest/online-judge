@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线OJ - 排行榜</title>
+    <style>
+        * { margin: 0px; padding: 0px; }
+        html, body {
+            width: 100%; height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6; color: #333;
+        }
+
+        .container .navbar {
+            width: 100%; height: 60px; background-color: #ffffff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 20px; box-sizing: border-box;
+        }
+        .container .navbar .nav-links a {
+            display: inline-block; padding: 0 20px; color: #555; 
+            font-size: 16px; font-weight: 500; line-height: 60px; 
+            text-decoration: none; transition: color 0.3s;
+        }
+        .container .navbar .nav-links a:hover { color: #20b597; }
+
+        .container .board_list {
+            padding-top: 50px; width: 800px; margin: 0px auto; text-align: center;
+        }
+        .container .board_list h1 { color: #20b597; margin-bottom: 20px;}
+        .container .board_list table {
+            width: 100%; border-collapse: collapse; margin-top: 20px;
+            background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border-radius: 8px; overflow: hidden;
+        }
+        .container .board_list th {
+            background-color: rgb(243, 248, 246); color: #555;
+            height: 50px; font-size: 16px; font-weight: bold;
+        }
+        .container .board_list td {
+            height: 50px; font-size: 15px; border-bottom: 1px solid #eee;
+        }
+        .container .board_list tr:last-child td { border-bottom: none; }
+        .container .board_list tr:hover { background-color: #fcfcfc; }
+        
+        /* 前三名高亮样式 */
+        .rank-1 { color: #ffbf00; font-weight: bold; font-size: 18px; }
+        .rank-2 { color: #c0c0c0; font-weight: bold; font-size: 18px; }
+        .rank-3 { color: #cd7f32; font-weight: bold; font-size: 18px; }
+        .pass-count { color: #20b597; font-weight: bold; }
+
+        /* 弹窗和 Toast 样式 */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(5px); z-index: 999; }
+        .form-group { text-align: left; margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 14px; color: #666; font-weight: bold; }
+        .modern-input { width: 100%; box-sizing: border-box; padding: 12px 15px; border: 1px solid #ddd; border-radius: 6px; font-size: 15px; outline: none; transition: all 0.3s; background-color: #fafafa; }
+        .modern-input:focus { border-color: #20b597; background-color: #fff; box-shadow: 0 0 0 3px rgba(32, 181, 151, 0.1); }
+        .modern-btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s; }
+        .btn-primary { background-color: #20b597; color: white; }
+        .btn-primary:hover { background-color: #1aa085; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(26, 160, 133, 0.3); }
+        .btn-dark { background-color: #333; color: white; }
+        .btn-dark:hover { background-color: #222; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); }
+        .auth-switch { text-align: center; margin-top: 20px; font-size: 14px; color: #666; }
+        .auth-switch a { color: #20b597; text-decoration: none; font-weight: bold; cursor: pointer; }
+        .auth-switch a:hover { text-decoration: underline; }
+        #toast_container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        .toast { min-width: 250px; padding: 15px 20px; margin-bottom: 15px; border-radius: 6px; color: #fff; font-size: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); opacity: 0; transform: translateX(100%); transition: opacity 0.3s, transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); display: flex; align-items: center; justify-content: space-between; }
+        .toast.show { opacity: 1; transform: translateX(0); }
+        .toast-success { background-color: #10b981; }
+        .toast-error { background-color: #ef4444; }
+        .toast-warning { background-color: #f59e0b; }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="navbar">
+            <div class="nav-links">
+                <a href="/" style="font-size: 20px; font-weight: bold; color: #20b597;">刷题小站</a>
+                <a href="/all_questions">题库</a>
+                <a href="/leaderboard.html" style="color: #20b597;">排行榜</a> <a href="#">讨论</a>
+            </div>
+            <div>
+                <span id="user_info" style="color: #333; font-weight: bold; margin-right: 15px; display: none;"></span>
+                <a href="javascript:void(0);" onclick="logout()" id="logout_btn" style="display: none; color: #ef4444; text-decoration: none; font-weight: 500;">退出</a>
+                <a id="login_btn" href="javascript:void(0);" onclick="openModal()" style="padding: 8px 20px; background: #20b597; color: white; border-radius: 20px; text-decoration: none; font-weight: bold;">登录 / 注册</a>
+            </div>
+        </div>
+
+        <div class="board_list">
+            <h1>全站刷题排行榜</h1>
+            <table>
+                <thead>
+                    <tr>
+                        <th>排名</th>
+                        <th>用户名</th>
+                        <th>通过题数</th>
+                        <th>提交次数</th>
+                        <th>AC率</th>
+                    </tr>
+                </thead>
+                <tbody id="board_body">
+                    <tr><td colspan="5" style="color: #999;">正在加载排行榜数据...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="toast_container"></div>
+    <div id="modal_overlay" class="modal-overlay" onclick="closeModal()"></div>
+    <div id="auth_modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:40px; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,0.2); z-index:1000; width: 360px;">
+        <span onclick="closeModal()" style="position:absolute; top:15px; right:20px; font-size:26px; cursor:pointer; color:#aaa; transition: 0.3s;" onmouseover="this.style.color='#333'" onmouseout="this.style.color='#aaa'">&times;</span>
+        <div id="login_view">
+            <h2 style="margin-bottom: 25px; color: #333; text-align: center;">欢迎回来</h2>
+            <div class="form-group"><label>用户名</label><input type="text" id="login_username" class="modern-input" placeholder="输入用户名"></div>
+            <div class="form-group"><label>密码</label><input type="password" id="login_password" class="modern-input" placeholder="输入密码"></div>
+            <button onclick="doLoginAction()" class="modern-btn btn-primary" style="margin-top: 10px;">登 录</button>
+            <div class="auth-switch">还没有账号？ <a onclick="switchAuthView('register')">立即免费注册</a></div>
+        </div>
+        <div id="register_view" style="display:none;">
+            <h2 style="margin-bottom: 25px; color: #333; text-align: center;">创建新账号</h2>
+            <div class="form-group"><label>设置用户名</label><input type="text" id="reg_username" class="modern-input" placeholder="字母或数字"></div>
+            <div class="form-group"><label>设置密码</label><input type="password" id="reg_password" class="modern-input" placeholder="不少于6位"></div>
+            <div class="form-group"><label>确认密码</label><input type="password" id="reg_confirm_password" class="modern-input" placeholder="请再次输入密码"></div>
+            <button onclick="doRegisterAction()" class="modern-btn btn-dark" style="margin-top: 10px;">注 册</button>
+            <div class="auth-switch">已有账号？ <a onclick="switchAuthView('login')">返回登录</a></div>
+        </div>
+    </div>
+
+    <script>
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast_container');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `<span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+        function openModal() { document.getElementById('modal_overlay').style.display = 'block'; document.getElementById('auth_modal').style.display = 'block'; switchAuthView('login'); }
+        function closeModal() { document.getElementById('modal_overlay').style.display = 'none'; document.getElementById('auth_modal').style.display = 'none'; }
+        function switchAuthView(viewName) { document.getElementById('login_view').style.display = viewName === 'login' ? 'block' : 'none'; document.getElementById('register_view').style.display = viewName === 'login' ? 'none' : 'block'; }
+        
+        function login(username, password) {
+            fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: username, password: password }) })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 0) {
+                    showToast("登录成功！", "success");
+                    localStorage.setItem("oj_token", data.token); localStorage.setItem("oj_role", data.role); localStorage.setItem("oj_username", username);
+                    setTimeout(() => location.reload(), 1000);
+                } else { showToast("登录失败：" + data.reason, "error"); }
+            });
+        }
+        function logout() { localStorage.removeItem("oj_token"); localStorage.removeItem("oj_role"); localStorage.removeItem("oj_username"); showToast("已退出登录", "success"); setTimeout(() => location.reload(), 1000); }
+        function doLoginAction() { let u = document.getElementById("login_username").value; let p = document.getElementById("login_password").value; if(!u || !p) { showToast("账号或密码不能为空！", "warning"); return; } login(u, p); }
+        function doRegisterAction() {
+            let u = document.getElementById("reg_username").value; let p = document.getElementById("reg_password").value; let cp = document.getElementById("reg_confirm_password").value;
+            if(!u || !p || !cp) { showToast("请完整填写所有注册信息！", "warning"); return; }
+            if(p !== cp) { showToast("两次输入的密码不一致，请重新输入！", "error"); return; }
+            fetch('/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u, password: p }) })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 0) { showToast("注册成功！", "success"); switchAuthView('login'); document.getElementById('login_username').value = u; }
+                else { showToast("注册失败：" + data.reason, "error"); }
+            });
+        }
+
+        // =========== 排行榜专属核心逻辑 ===========
+        
+        // 获取排行榜数据
+        function fetchLeaderboardData() {
+            fetch('/leaderboard')
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById("board_body");
+                tbody.innerHTML = ""; // 清空加载提示
+                
+                if (data.status === 0 && data.data.length > 0) {
+                    data.data.forEach((user, index) => {
+                        let rank = index + 1;
+                        let rankHtml = `<td>${rank}</td>`;
+                        
+                        // 为前三名增加特殊的 CSS 样式
+                        if (rank === 1) rankHtml = `<td class="rank-1">🥇 1</td>`;
+                        else if (rank === 2) rankHtml = `<td class="rank-2">🥈 2</td>`;
+                        else if (rank === 3) rankHtml = `<td class="rank-3">🥉 3</td>`;
+
+                        // 格式化通过率
+                        let passRateStr = user.pass_rate ? user.pass_rate.toFixed(1) + "%" : "0.0%";
+
+                        // 构建行
+                        let tr = document.createElement("tr");
+                        tr.innerHTML = `
+                            ${rankHtml}
+                            <td style="font-weight: 500;">${user.username}</td>
+                            <td class="pass-count">${user.pass_count}</td>
+                            <td>${user.submit_count}</td>
+                            <td>${passRateStr}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="5" style="color: #999;">暂无数据，快去提交第一道题吧！</td></tr>`;
+                }
+            })
+            .catch(err => {
+                document.getElementById("board_body").innerHTML = `<tr><td colspan="5" style="color: #ef4444;">获取数据失败，请检查网络或后端服务。</td></tr>`;
+            });
+        }
+
+        // 页面加载时的状态渲染
+        window.onload = function() {
+            let username = localStorage.getItem("oj_username");
+            let token = localStorage.getItem("oj_token");
+            if (username && token) {
+                document.getElementById("login_btn").style.display = "none";
+                document.getElementById("user_info").innerText = "欢迎，" + username;
+                document.getElementById("user_info").style.display = "inline-block";
+                document.getElementById("logout_btn").style.display = "inline-block";
+            }
+            
+            // 自动加载排行榜数据
+            fetchLeaderboardData();
+        };
+    </script>
+</body>
+</html>
