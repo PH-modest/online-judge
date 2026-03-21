@@ -25,6 +25,8 @@ namespace ns_model
         std::string tail;   // 题目的测试用例，需要和header拼接，形成完整代码
         int cpu_limit;      // 题目的时间要求（S）
         int mem_limit;      // 题目的空间要求（KB）
+        int submit_count;   // 题目的总提交次数
+        int pass_count;     // 题目的总通过次数 
     };
 
     const std::string oj_questions = "oj_questions";
@@ -89,7 +91,7 @@ namespace ns_model
                 out->push_back(q);
             }
             // 释放结果空间
-            //free(res);
+            // free(res);
             mysql_free_result(res);
             // 关闭mysql连接
             mysql_close(my);
@@ -121,6 +123,77 @@ namespace ns_model
                 }
             }
             return res;
+        }
+
+        // 更新题目的总提交和通过次数
+        bool UpdateQuestionCount(const std::string &number, bool is_passed)
+        {
+            MYSQL *my = mysql_init(nullptr);
+            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0)) return false;
+            mysql_set_character_set(my, "utf8");
+
+            std::string sql1 = "UPDATE oj_questions SET submit_count = submit_count + 1 WHERE number = " + number;
+            mysql_query(my,sql1.c_str());
+            
+            if (is_passed)
+            {
+                std::string sql2 = "UPDATE oj_questions SET pass_count = pass_count + 1 WHERE number = " + number;
+                mysql_query(my,sql2.c_str());
+            }
+            mysql_close(my);
+            return true;
+        }
+
+        // 更新用户对某道题的解答状态
+        bool UpdateUserQuestionState(int user_id, const std::string& number, bool is_passed)
+        {
+            int state = is_passed ? 1 : 0;
+            MYSQL *my = mysql_init(nullptr);
+            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0)) return false;
+            mysql_set_character_set(my, "utf8");
+
+            // 利用 ON DUPLICATE KEY UPDATE 防止唯一主键冲突，并使用 GREATEST 防止从"已通过(1)"退化为"未通过(0)"
+            char sql[512];
+            snprintf(sql, sizeof(sql), 
+            "INSERT INTO oj_user_question_status (user_id, question_number, state) VALUES (%d, %s, %d) "
+            "ON DUPLICATE KEY UPDATE state = GREATEST(state, VALUES(state))", 
+            user_id, number.c_str(), state);
+
+            mysql_query(my, sql);
+            mysql_close(my);
+            return true;
+        }
+
+        // 批量获取某用户所有做过的题目状态
+        bool GetUserQuestionStates(int user_id, std::unordered_map<std::string, int>* states)
+        {
+            MYSQL *my = mysql_init(nullptr);
+            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0)) return false;
+            mysql_set_character_set(my, "utf8");
+
+            std::string sql = "SELECT question_number, state FROM oj_user_question_status WHERE user_id = " + std::to_string(user_id);
+            
+            if (0 == mysql_query(my, sql.c_str()))
+            {
+                MYSQL_RES *res = mysql_store_result(my);
+                if(res)
+                {
+                    int rows = mysql_num_rows(res);
+                    for(int i = 0; i < rows; ++i)
+                    {
+                        MYSQL_ROW row = mysql_fetch_row(res);
+                        if(row[0] && row[1])
+                        {
+                            std::string q_num = row[0]; // 查出来转成 string 当 key
+                            int state = atoi(row[1]);
+                            (*states)[q_num] = state;
+                        }
+                    }
+                    mysql_free_result(res);
+                }
+            }
+            mysql_close(my);
+            return true;
         }
 
         ~Model()

@@ -96,7 +96,18 @@ int main()
     { 
         //返回一张包含所有题目的html网页
         std::string html;
-        ctrl.AllQuestions(&html);
+        int user_id = -1;
+        // 检查是否有 Authorization 头
+        if (req.has_header("Authorization")) {
+            std::string token = req.get_header_value("Authorization");
+            int role = 0;
+            std::string username = "";
+            // 验证 Token
+            if (ns_util::JwtUtil::VerifyToken(token, &user_id, &username, &role)) {
+                // Token 有效，使用获取到的 user_id
+            }
+        }
+        ctrl.AllQuestions(&html, user_id);
         rsp.set_content(html, "text/html;charset=utf-8"); 
     });
 
@@ -151,8 +162,17 @@ int main()
         if(reader.parse(result_json, judge_result))
         {
             int status = judge_result["status"].asInt();
-            bool is_passed = (status == 0);
+            bool is_passed = false;
+            if (status == 0) {
+                // 编译运行成功，需要检查输出结果
+                std::string stdout = judge_result["stdout"].asString();
+                if (stdout.find("Failed") == std::string::npos && stdout.find("没有通过") == std::string::npos) {
+                    is_passed = true;
+                }
+            }
             user_model.UpdataUserSubmitState(user_id, is_passed);
+            // 更新题目状态
+            ctrl.UpdateStats(user_id, number, is_passed);
         }
 
         rsp.set_content(result_json, "application/json;charset=utf-8");
