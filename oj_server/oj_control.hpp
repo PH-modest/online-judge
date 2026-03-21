@@ -7,6 +7,7 @@
 #include <fstream>
 #include <cassert>
 #include <algorithm>
+#include <unordered_map>
 #include <jsoncpp/json/json.h>
 
 #include "../comm/log.hpp"
@@ -55,9 +56,11 @@ namespace ns_control
         // 重置主机负载
         void ResetLoad()
         {
-            if(_mutex) _mutex->lock();
+            if (_mutex)
+                _mutex->lock();
             _load = 0;
-            if(_mutex) _mutex->unlock();
+            if (_mutex)
+                _mutex->unlock();
         }
         // 获取主机负载
         uint64_t Load()
@@ -164,7 +167,7 @@ namespace ns_control
             _mutex.lock();
             for (auto iter = _online.begin(); iter != _online.end(); ++iter)
             {
-                if(*iter == id)
+                if (*iter == id)
                 {
                     _machines[id].ResetLoad();
                 }
@@ -240,7 +243,7 @@ namespace ns_control
         }
 
         // 根据题目数据构建网页
-        bool AllQuestions(std::string *html)
+        bool AllQuestions(std::string *html, int user_id = -1)
         {
             bool ret = true;
             std::vector<ns_model::Question> all;
@@ -248,8 +251,14 @@ namespace ns_control
             {
                 sort(all.begin(), all.end(), [](const ns_model::Question &q1, const ns_model::Question &q2)
                      { return atoi(q1.number.c_str()) < atoi(q2.number.c_str()); });
+
+                std::unordered_map<std::string, int> states;
+                if (user_id > 0)
+                {
+                    _model.GetUserQuestionStates(user_id, &states);
+                }
                 // 获取题目信息成功，将所有题目数据构建成网页
-                _view.AllExpandHtml(all, html);
+                _view.AllExpandHtml(all, states, html);
             }
             else
             {
@@ -257,6 +266,18 @@ namespace ns_control
                 ret = false;
             }
             return ret;
+        }
+
+        // 更新统计和状态
+        void UpdateStats(int user_id, const std::string& number, bool is_passed)
+        {
+            // 更新本题目的总提交和总通过次数
+            _model.UpdateQuestionCount(number, is_passed);
+            // 更新该用户的单题状态（仅在登录用户提交时记录）
+            if (user_id > 0) 
+            {
+                _model.UpdateUserQuestionState(user_id, number, is_passed);
+            }
         }
 
         bool Question(const std::string &number, std::string *html)
