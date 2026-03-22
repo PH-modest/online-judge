@@ -198,6 +198,78 @@ namespace ns_model
             return true;
         }
 
+        // 管理员录入新题目到数据库
+        bool InsertQuestion(const Question &q)
+        {
+            MYSQL *my = mysql_init(nullptr);
+            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0)) 
+                return false;
+            mysql_set_character_set(my, "utf8");
+
+            // 代码和描述中包含大量的引号、换行符等特殊字符
+            // 如果直接拼接SQL会导致语法错误或SQL注入，必须进行字符转义
+            // 转义后长度最大可能是原来的两倍+1
+            char* esc_title = new char[q.title.length() * 2 + 1];
+            char* esc_desc = new char[q.desc.length() * 2 + 1];
+            char* esc_header = new char[q.header.length() * 2 + 1];
+            char* esc_tail = new char[q.tail.length() * 2 + 1];
+
+            mysql_real_escape_string(my, esc_title, q.title.c_str(), q.title.length());
+            mysql_real_escape_string(my, esc_desc, q.desc.c_str(), q.desc.length());
+            mysql_real_escape_string(my, esc_header, q.header.c_str(), q.header.length());
+            mysql_real_escape_string(my, esc_tail, q.tail.c_str(), q.tail.length());
+
+            // 查重
+            std::string check_sql = "SELECT number FROM oj_questions WHERE title = '" + std::string(esc_title) + "'";
+            if (mysql_query(my, check_sql.c_str()) == 0)
+            {
+                MYSQL_RES *res = mysql_store_result(my);
+                if (res)
+                {
+                    int rows = mysql_num_rows(res);
+                    mysql_free_result(res); // 记得释放结果集，防止内存泄漏
+                    
+                    if (rows > 0) // 说明数据库里已经有这个标题了
+                    {
+                        LOG(WARNING) << "录题拦截：题目名称 [" << q.title << "] 已存在！\n";
+                        
+                        // 查重失败，也要记得释放前面 new 出来的内存，防止内存泄漏（答辩亮点）
+                        delete[] esc_title;
+                        delete[] esc_desc;
+                        delete[] esc_header;
+                        delete[] esc_tail;
+                        mysql_close(my);
+                        
+                        return false; // 返回 false 告诉 Controller 插入失败
+                    }
+                }
+            }
+
+            // 注意：desc 是 MySQL 的关键字，必须加反引号 `desc` 才能作为列名使用
+            std::string sql_query = "INSERT INTO oj_questions (title, star, `desc`, header, tail, cpu_limit, mem_limit) VALUES ('";
+            sql_query += esc_title; sql_query += "', '";
+            sql_query += q.star; sql_query += "', '";
+            sql_query += esc_desc; sql_query += "', '";
+            sql_query += esc_header; sql_query += "', '";
+            sql_query += esc_tail; sql_query += "', ";
+            sql_query += std::to_string(q.cpu_limit); sql_query += ", ";
+            sql_query += std::to_string(q.mem_limit); sql_query += ")";
+
+            int res = mysql_query(my, sql_query.c_str());
+            if (res != 0) {
+                LOG(ERROR) << "录题失败，错误原因: " << mysql_error(my) << "\n";
+            }
+
+            // 释放动态分配的内存
+            delete[] esc_title;
+            delete[] esc_desc;
+            delete[] esc_header;
+            delete[] esc_tail;
+
+            mysql_close(my);
+            return res == 0;
+        }
+
         ~Model()
         {
         }

@@ -212,6 +212,80 @@ int main()
         rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); 
     });
 
+    // 管理员录入新题目与测试用例的接口
+    svr.Post("/admin/add_question", [&ctrl](const Request &req, Response &rsp)
+    {
+        Json::Value rsp_json;
+        Json::FastWriter writer;
+
+        // 1. JWT 鉴权与身份识别
+        if (!req.has_header("Authorization"))
+        {
+            rsp_json["status"] = -2;
+            rsp_json["reason"] = "未登录，无权操作！";
+            rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+            return;
+        }
+
+        std::string token = req.get_header_value("Authorization");
+        int user_id = 0, role = 0;
+        std::string username = "";
+
+        if (!ns_util::JwtUtil::VerifyToken(token, &user_id, &username, &role))
+        {
+            rsp_json["status"] = -2;
+            rsp_json["reason"] = "登录凭证已过期或无效，请重新登录。";
+            rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+            return;
+        }
+
+        // 2. 核心鉴权：检验角色是否为管理员 (role == 1)
+        if (role != 1) 
+        {
+            LOG(WARNING) << "越权访问拦截: 普通用户 [" << username << "] 试图调用录题接口！\n";
+            rsp_json["status"] = -3;
+            rsp_json["reason"] = "权限不足，仅管理员可执行录题操作！";
+            rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+            return;
+        }
+
+        // 3. 解析前端传来的 JSON 题目数据
+        Json::Reader reader;
+        Json::Value req_json;
+        if (reader.parse(req.body, req_json))
+        {
+            ns_model::Question q;
+            q.title = req_json["title"].asString();
+            q.star = req_json["star"].asString();
+            q.desc = req_json["desc"].asString();
+            q.header = req_json["header"].asString();
+            q.tail = req_json["tail"].asString();
+            // 如果前端没有传 cpu/mem limit，给默认值防止解析失败
+            q.cpu_limit = req_json.isMember("cpu_limit") ? req_json["cpu_limit"].asInt() : 1;
+            q.mem_limit = req_json.isMember("mem_limit") ? req_json["mem_limit"].asInt() : 50000;
+
+            // 4. 调用 Control 层入库
+            if (ctrl.AddQuestion(q))
+            {
+                LOG(INFO) << "管理员 [" << username << "] 录入新题目: " << q.title << " 成功！\n";
+                rsp_json["status"] = 0;
+                rsp_json["reason"] = "录题成功！";
+            }
+            else
+            {
+                rsp_json["status"] = -1;
+                rsp_json["reason"] = "数据库录入失败，请检查数据格式或联系服务器管理员。";
+            }
+        }
+        else
+        {
+            rsp_json["status"] = -1;
+            rsp_json["reason"] = "JSON 数据解析失败，请检查请求体格式。";
+        }
+
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+    });
+
     svr.set_base_dir("./wwwroot");
     svr.listen("0.0.0.0", 8102);
     return 0;

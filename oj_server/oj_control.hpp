@@ -280,6 +280,11 @@ namespace ns_control
             }
         }
 
+        bool AddQuestion(const ns_model::Question &q)
+        {
+            return _model.InsertQuestion(q);
+        }
+
         bool Question(const std::string &number, std::string *html)
         {
             bool ret = true;
