@@ -85,8 +85,10 @@ namespace ns_model
                 q.desc = row[3];
                 q.header = row[4];
                 q.tail = row[5];
-                q.cpu_limit = atoi(row[6]);
-                q.mem_limit = atoi(row[7]);
+                q.cpu_limit = row[6] ? atoi(row[6]) : 1;
+                q.mem_limit = row[7] ? atoi(row[7]) : 50000;
+                q.submit_count = row[8] ? atoi(row[8]) : 0;
+                q.pass_count = row[9] ? atoi(row[9]) : 0;
 
                 out->push_back(q);
             }
@@ -156,8 +158,8 @@ namespace ns_model
             char sql[512];
             snprintf(sql, sizeof(sql), 
             "INSERT INTO oj_user_question_status (user_id, question_number, state) VALUES (%d, %s, %d) "
-            "ON DUPLICATE KEY UPDATE state = GREATEST(state, VALUES(state))", 
-            user_id, number.c_str(), state);
+            "ON DUPLICATE KEY UPDATE state = GREATEST(state, %d)", 
+            user_id, number.c_str(), state, state);
 
             mysql_query(my, sql);
             mysql_close(my);

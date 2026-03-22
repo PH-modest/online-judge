@@ -101,15 +101,9 @@ namespace ns_model
         // 更新用户的提交和通过记录
         bool UpdataUserSubmitState(int user_id, bool is_passed)
         {
-            std::string sql;
-            if (is_passed)
-            {
-                sql = "UPDATE oj_users SET submit_count = submit_count + 1, pass_count = pass_count + 1 WHERE id = " + std::to_string(user_id);
-            }
-            else
-            {
-                sql = "UPDATE oj_users SET submit_count = submit_count + 1 WHERE id = " + std::to_string(user_id);
-            }
+            // 只要提交了，我们就增加 submit_count。
+            // 真实的 pass_count 已经在排行榜通过子查询精确统计了，避免这里重复累加产生脏数据。
+            std::string sql = "UPDATE oj_users SET submit_count = submit_count + 1 WHERE id = " + std::to_string(user_id);
 
             if (mysql_query(_conn, sql.c_str()) != 0)
             {
@@ -123,7 +117,16 @@ namespace ns_model
         bool GetGlobalLeaderboard(std::vector<User> *board, int limit = 50)
         {
             // 按照 通过数降序、提交数升序(通过数相同，提交少的排前面) 排列
-            std::string sql = "SELECT id, username, role, pass_count, submit_count FROM oj_users ORDER BY pass_count DESC, submit_count ASC LIMIT " + std::to_string(limit);
+            // std::string sql = "SELECT id, username, role, pass_count, submit_count FROM oj_users ORDER BY pass_count DESC, submit_count ASC LIMIT " + std::to_string(limit);
+
+            // 使用子查询实时统计该用户在 oj_user_question_status 表中 state=1 的唯一记录数
+            std::string sql =
+                "SELECT u.id, u.username, u.role, "
+                "(SELECT COUNT(*) FROM oj_user_question_status s WHERE s.user_id = u.id AND s.state = 1) AS true_pass_count, "
+                "u.submit_count "
+                "FROM oj_users u "
+                "ORDER BY true_pass_count DESC, u.submit_count ASC LIMIT " +
+                std::to_string(limit);
 
             if (mysql_query(_conn, sql.c_str()) != 0)
             {
