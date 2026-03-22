@@ -65,30 +65,51 @@
 
         .container .question_list table {
             width: 100%;
-            font-size: large;
-            font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
-            margin-top: 50px;
-            background-color: rgb(243, 248, 246);
+            table-layout: fixed; 
+            border-collapse: collapse; 
+            margin-top: 20px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            overflow: hidden;
         }
 
         .container .question_list h1 {
             color: #20b597;
         }
 
-        .container .question_list table .item {
-            width: 100px;
-            height: 40px;
-            font-size: large;
-            font-family: 'Times New Roman', Times, serif;
+        .container .question_list table th {
+            background-color: rgb(243, 248, 246);
+            color: #555;
+            height: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .container .question_list table td {
+            height: 50px;
+            font-size: 15px;
+            border-bottom: 1px solid #eee;
+            text-align: center;
+        }
+
+        .container .question_list table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .container .question_list table tr:hover {
+            background-color: #fcfcfc;
         }
 
         .container .question_list table .item a {
             text-decoration: none;
-            color: black;
+            color: #333;
+            font-weight: 500;
         }
 
         .container .question_list table .item a:hover {
-            color: blue;
+            color: #20b597; 
             text-decoration: underline;
         }
 
@@ -345,11 +366,11 @@
                 headers['Authorization'] = token;
             }
 
-            fetch(url, { headers: headers })
+            fetch(url, { headers: headers, cache: 'no-cache' })
                 .then(response => response.text())
                 .then(html => {
                     document.open();
-                    document.write(html);
+                    document.write('<script>window.isFetchedWithToken = true;<\/script>' + html);
                     document.close();
                     // 页面重写后，需重新执行绑定事件（因为原有的 onload 不会再触发）
                     renderLoginStatus();
@@ -465,6 +486,14 @@
         // 页面加载时的状态渲染 (判断是否已登录)
         window.onload = function () {
             renderLoginStatus();
+
+            // 如果用户已登录，且当前页面是浏览器默认 GET 请求加载的（缺少题目状态）
+            // 那么自动携带 Token 重新向后端拉取一次带状态的页面
+            let token = localStorage.getItem("oj_token");
+            if (token && !window.isFetchedWithToken) {
+                window.isFetchedWithToken = true; // 打上标记，防止死循环
+                fetchWithToken('/all_questions');
+            }
         };
 
         // 触发登录
