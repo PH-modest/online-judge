@@ -269,12 +269,12 @@ namespace ns_control
         }
 
         // 更新统计和状态
-        void UpdateStats(int user_id, const std::string& number, bool is_passed)
+        void UpdateStats(int user_id, const std::string &number, bool is_passed)
         {
             // 更新本题目的总提交和总通过次数
             _model.UpdateQuestionCount(number, is_passed);
             // 更新该用户的单题状态（仅在登录用户提交时记录）
-            if (user_id > 0) 
+            if (user_id > 0)
             {
                 _model.UpdateUserQuestionState(user_id, number, is_passed);
             }
