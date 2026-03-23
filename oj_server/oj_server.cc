@@ -165,8 +165,8 @@ int main()
             bool is_passed = false;
             if (status == 0) {
                 // 编译运行成功，需要检查输出结果
-                std::string stdout = judge_result["stdout"].asString();
-                if (stdout.find("Failed") == std::string::npos && stdout.find("没有通过") == std::string::npos) {
+                std::string run_output = judge_result["stdout"].asString();
+                if (run_output.find("Failed") == std::string::npos && run_output.find("没有通过") == std::string::npos) {
                     is_passed = true;
                 }
             }
