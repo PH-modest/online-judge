@@ -22,37 +22,40 @@ namespace ns_runner
     {
     public:
         Runner()
-        {}
+        {
+        }
         ~Runner()
-        {}
+        {
+        }
+
     public:
-        //只判断程序运行时是否异常
-        //返回值 > 0 ：程序异常了，退出时收到了信号，返回值就是对应的信号编号
-        //返回值 == 0：正常运行结束，结果保存在文件中
-        //返回值 < 0：内部错误
-        //cpu_limit：该程序运行时，可以使用的最大CPU资源上限
-        //mem_limit：该程序运行时，可以使用的最大内存大小（KB）
+        // 只判断程序运行时是否异常
+        // 返回值 > 0 ：程序异常了，退出时收到了信号，返回值就是对应的信号编号
+        // 返回值 == 0：正常运行结束，结果保存在文件中
+        // 返回值 < 0：内部错误
+        // cpu_limit：该程序运行时，可以使用的最大CPU资源上限
+        // mem_limit：该程序运行时，可以使用的最大内存大小（KB）
 
         static void SetProcLimit(int cpu_limit, int mem_limit)
         {
             struct rlimit cpu_rlimit;
             cpu_rlimit.rlim_max = RLIM_INFINITY;
             cpu_rlimit.rlim_cur = cpu_limit;
-            setrlimit(RLIMIT_CPU,&cpu_rlimit);
+            setrlimit(RLIMIT_CPU, &cpu_rlimit);
 
             struct rlimit mem_rlimit;
             mem_rlimit.rlim_max = RLIM_INFINITY;
-            mem_rlimit.rlim_cur = mem_limit * 1024;//转化成为KB
-            setrlimit(RLIMIT_AS,&mem_rlimit);
+            mem_rlimit.rlim_cur = mem_limit * 1024; // 转化成为KB
+            setrlimit(RLIMIT_AS, &mem_rlimit);
         }
 
         static void SetSeccomp()
         {
             // 1、初始化 seccomp 规则，默认允许所有系统调用(SCMP_ACT_ALLOW)
             scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ALLOW);
-            if(ctx == NULL)
+            if (ctx == NULL)
             {
-                LOG(FATAL)<<"初始化 Seccomp 失败\n";
+                LOG(FATAL) << "初始化 Seccomp 失败\n";
                 exit(1); // 规则创建失败，直接退出，绝不执行用户代码
             }
 
@@ -67,7 +70,7 @@ namespace ns_runner
             seccomp_rule_add(ctx, SCMP_ACT_KILL, SCMP_SYS(connect), 0);
 
             // 3、加载规则到内核
-            if(seccomp_load(ctx) != 0)
+            if (seccomp_load(ctx) != 0)
             {
                 LOG(FATAL) << "加载 Seccomp 规则失败\n";
                 seccomp_release(ctx);
@@ -76,7 +79,7 @@ namespace ns_runner
             seccomp_release(ctx);
         }
 
-        static int Run(const std::string& file_name,int cpu_limit,int mem_limit)
+        static int Run(const std::string &file_name, int cpu_limit, int mem_limit, int *time_used_ms, int *mem_used_kb)
         {
             std::string _execute = PathUtil::Exe(file_name);
             std::string _stdin = PathUtil::Stdin(file_name);
@@ -84,45 +87,60 @@ namespace ns_runner
             std::string _stderr = PathUtil::Stderr(file_name);
 
             umask(0);
-            int _stdin_fd = open(_stdin.c_str(),O_CREAT | O_RDONLY,0644);
-            int _stdout_fd = open(_stdout.c_str(),O_CREAT|O_WRONLY,0644);
-            int _stderr_fd = open(_stderr.c_str(),O_CREAT|O_WRONLY,0644);
+            int _stdin_fd = open(_stdin.c_str(), O_CREAT | O_RDONLY, 0644);
+            int _stdout_fd = open(_stdout.c_str(), O_CREAT | O_WRONLY, 0644);
+            int _stderr_fd = open(_stderr.c_str(), O_CREAT | O_WRONLY, 0644);
 
-            if(_stdin_fd < 0 || _stderr_fd < 0 || _stdout_fd < 0)
+            if (_stdin_fd < 0 || _stderr_fd < 0 || _stdout_fd < 0)
             {
-                LOG(ERROR)<<"运行时打开标准文件失败\n";
-                return -1;//打开文件失败
+                LOG(ERROR) << "运行时打开标准文件失败\n";
+                return -1; // 打开文件失败
             }
 
             pid_t pid = fork();
-            if(pid < 0)
+            if (pid < 0)
             {
                 close(_stdin_fd);
                 close(_stdout_fd);
                 close(_stderr_fd);
-                LOG(ERROR)<<"运行时创建子进程失败\n";
-                return -2;//代表创建子进程失败
+                LOG(ERROR) << "运行时创建子进程失败\n";
+                return -2; // 代表创建子进程失败
             }
-            else if(pid == 0)
+            else if (pid == 0)
             {
-                dup2(_stdin_fd,0);
-                dup2(_stdout_fd,1);
-                dup2(_stderr_fd,2);
+                dup2(_stdin_fd, 0);
+                dup2(_stdout_fd, 1);
+                dup2(_stderr_fd, 2);
 
                 SetProcLimit(cpu_limit, mem_limit);
                 SetSeccomp();
-                execl(_execute.c_str()/*我要执行谁*/,_execute.c_str()/*我想要怎么执行*/,nullptr);
+                execl(_execute.c_str() /*我要执行谁*/, _execute.c_str() /*我想要怎么执行*/, nullptr);
                 exit(1);
             }
-            else 
+            else
             {
                 close(_stdin_fd);
                 close(_stdout_fd);
                 close(_stderr_fd);
                 int status = 0;
-                waitpid(pid,&status,0);
-                //程序运行异常，一定是因为收到了信号
-                LOG(INFO)<<"运行完毕,info:"<<(status & 0x7F)<<"\n";
+                struct rusage ru; // 用于获取子进程资源使用情况
+
+                wait4(pid, &status, 0, &ru);
+
+                // 计算真实的 CPU 运行时间
+                if (time_used_ms)
+                {
+                    *time_used_ms = (ru.ru_utime.tv_sec * 1000 + ru.ru_utime.tv_usec / 1000) + (ru.ru_stime.tv_sec * 1000 + ru.ru_stime.tv_usec / 1000);
+                }
+
+                // 获取峰值内存占用
+                if(mem_used_kb)
+                {
+                    *mem_used_kb = ru.ru_maxrss;
+                }
+
+                // 程序运行异常，一定是因为收到了信号
+                LOG(INFO) << "运行完毕,info:" <<" 耗时:"<< (time_used_ms ? *time_used_ms : 0) <<"ms 内存:"<< (mem_used_kb ? *mem_used_kb : 0) <<"KB\n";
                 return status & 0x7f;
             }
         }

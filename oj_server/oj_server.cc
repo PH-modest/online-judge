@@ -155,21 +155,15 @@ int main()
 
         std::string number = req.matches[1];
         std::string result_json;
-        ctrl.Judge(number, req.body, &result_json);
+        ctrl.Judge(number, req.body, &result_json, user_id);
 
         Json::Reader reader;
         Json::Value judge_result;
         if(reader.parse(result_json, judge_result))
         {
             int status = judge_result["status"].asInt();
-            bool is_passed = false;
-            if (status == 0) {
-                // 编译运行成功，需要检查输出结果
-                std::string run_output = judge_result["stdout"].asString();
-                if (run_output.find("Failed") == std::string::npos && run_output.find("没有通过") == std::string::npos) {
-                    is_passed = true;
-                }
-            }
+            bool is_passed = (status == 0);
+            
             user_model.UpdataUserSubmitState(user_id, is_passed);
             // 更新题目状态
             ctrl.UpdateStats(user_id, number, is_passed);
@@ -284,6 +278,51 @@ int main()
         }
 
         rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+    });
+
+    // 获取特定题目的历史提交记录接口
+    svr.Get(R"(/history/(\d+))", [&ctrl](const Request &req, Response &rsp)
+    {
+        Json::Value rsp_json;
+        Json::FastWriter writer;
+
+        // 拦截器：必须登录才能看历史记录
+        if (!req.has_header("Authorization"))
+        {
+            rsp_json["status"] = -2;
+            rsp_json["reason"] = "未登录，无法获取历史记录！";
+            rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+            return;
+        }
+
+        std::string token = req.get_header_value("Authorization");
+        int user_id = 0, role = 0;
+        std::string username = "";
+
+        if (!ns_util::JwtUtil::VerifyToken(token, &user_id, &username, &role))
+        {
+            rsp_json["status"] = -2;
+            rsp_json["reason"] = "凭证无效或已过期！";
+            rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+            return;
+        }
+
+        // 提取题号，并获取历史记录
+        std::string number = req.matches[1];
+        std::string result_json;
+        
+        if (ctrl.GetHistory(user_id, number, &result_json))
+        {
+            // 成功：直接返回 JSON 数组
+            rsp.set_content(result_json, "application/json;charset=utf-8");
+        }
+        else
+        {
+            // 失败：返回错误信息
+            rsp_json["status"] = -1;
+            rsp_json["reason"] = "数据库查询失败";
+            rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+        }
     });
 
     svr.set_base_dir("./wwwroot");
