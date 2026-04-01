@@ -79,7 +79,7 @@
             padding-left: 10px;
             font-size: medium;
             font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
-            white-space: pre-wrap; 
+            white-space: pre-wrap;
             word-wrap: break-word;
         }
 
@@ -96,7 +96,9 @@
 
         .container .part2 {
             width: 100%;
-            overflow: hidden;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start; 
             padding: 15px 20px;
             box-sizing: border-box;
             background-color: #fdfdfd;
@@ -104,23 +106,29 @@
         }
 
         .container .part2 .result {
-            width: 80%;
-            float: left;
+            flex: 1;
+            margin-right: 20px;
+        }
+
+        .container .part2 .action-buttons {
+            display: flex;
+            gap: 15px; 
+            flex-shrink: 0; 
         }
 
         .container .part2 .btn-submit {
             width: 120px;
             height: 50px;
-            font-size: large;
-            float: right;
-            background-color: #20b597;
-            color: #FFF;
+            font-size: large;            
             border-radius: 0.5ch;
             border: 0px;
-            margin-top: 10px;
-            margin-right: 10px;
+            color: #FFF;
             cursor: pointer;
             transition: all 0.3s ease;
+        }
+
+        .container .part2 .btn-submit:active {
+            transform: scale(0.95);
         }
 
         .container .part2 button:hover {
@@ -194,10 +202,6 @@
 
         .details-box.border-ce {
             border-left-color: #ffc107;
-        }
-
-        .container .part2 .btn-submit:active {
-            transform: scale(0.95);
         }
 
         /* 现代化弹窗遮罩层 */
@@ -340,6 +344,12 @@
             background-color: #f59e0b;
         }
 
+        .status-mle {
+            background-color: #8a2be2;
+            /* 蓝紫色 */
+            color: white;
+        }
+
         /* 警告黄 */
 
         .modal-large {
@@ -379,6 +389,100 @@
 
         .code-input:focus {
             border-color: #20b597;
+        }
+
+        /*历史记录相关样式*/
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .history-table th,
+        .history-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }
+
+        .history-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #555;
+            position: sticky;
+            top: 0;
+            /* 表头吸顶 */
+        }
+
+        .history-table tr:hover {
+            background-color: #f1f5f9;
+        }
+
+        .btn-restore {
+            padding: 6px 12px;
+            background-color: #17a2b8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.3s;
+        }
+
+        .btn-restore:hover {
+            background-color: #138496;
+        }
+
+        .badge-sm {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+
+        /*代码查看详情弹出样式*/
+        #code_view_modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #282c34;
+            /* 深色主题背景 */
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4);
+            z-index: 1001;
+            /* 确保在历史记录弹窗之上 */
+            width: 700px;
+        }
+
+        .code-view-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        #history_code_display {
+            height: 400px;
+            width: 100%;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .btn-view {
+            padding: 6px 12px;
+            background-color: #20b597;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            margin-right: 5px;
         }
     </style>
 </head>
@@ -421,7 +525,13 @@
         <!-- 提交并且得到结果，并显示 -->
         <div class="part2">
             <div class="result"></div>
-            <button class="btn-submit" onclick="submit()">提交代码</button>
+            <div id="original_pre_code" style="display: none;">{{pre_code}}</div>
+
+            <div class="action-buttons">
+                <button class="btn-submit" style="background-color: #ef4444;" onclick="openResetConfirmModal()">重置代码</button>
+                <button class="btn-submit" style="background-color: #6c757d;" onclick="openHistoryModal()">提交历史</button>
+                <button class="btn-submit" style="background-color: #20b597;" onclick="submit()">提交代码</button>
+            </div>
         </div>
 
     </div>
@@ -527,6 +637,58 @@
             入</button>
     </div>
 
+    <div id="history_modal" class="modal-large" style="width: 800px; max-height: 80vh;">
+        <span onclick="closeHistoryModal()"
+            style="position:absolute; top:15px; right:20px; font-size:26px; cursor:pointer; color:#aaa; transition: 0.3s;"
+            onmouseover="this.style.color='#333'" onmouseout="this.style.color='#aaa'">&times;</span>
+
+        <h2 style="margin-bottom: 20px; color: #333; border-left: 4px solid #17a2b8; padding-left: 10px;">我的提交历史</h2>
+
+        <div style="max-height: 60vh; overflow-y: auto;">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>提交时间</th>
+                        <th>状态</th>
+                        <th>耗时 (ms)</th>
+                        <th>内存 (KB)</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="history_tbody">
+                </tbody>
+            </table>
+            <div id="history_empty" style="display: none; text-align: center; padding: 40px; color: #999;">
+                暂无提交记录，快去尝试第一次提交吧！
+            </div>
+        </div>
+    </div>
+
+    <div id="code_view_modal">
+        <div class="code-view-header">
+            <h3 id="code_view_title" style="color: #20b597;">历史代码详情</h3>
+            <span onclick="closeCodeViewModal()" style="font-size:24px; cursor:pointer; color:#999;">&times;</span>
+        </div>
+        <div id="history_code_display"></div>
+        <div style="text-align: right; margin-top: 15px;">
+            <button class="modern-btn btn-primary" style="width: 100px;" onclick="closeCodeViewModal()">关闭</button>
+        </div>
+    </div>
+
+    <div id="reset_confirm_modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:30px; border-radius:12px; box-shadow:0 15px 50px rgba(0,0,0,0.3); z-index:1001; width: 340px; text-align: center;">
+        
+        <h3 style="margin-bottom: 15px; color: #333; font-size: 20px;">⚠️ 确认重置代码？</h3>
+        
+        <p style="color: #666; font-size: 15px; line-height: 1.5; margin-bottom: 25px;">
+            此操作将<strong style="color: #ef4444;">清空</strong>你当前编写的所有代码，并恢复为题目的初始状态。<br><br>此操作不可逆转！
+        </p>
+        
+        <div style="display: flex; justify-content: space-between; gap: 15px;">
+            <button class="modern-btn" style="background-color: #f1f5f9; color: #555; flex: 1;" onclick="closeResetConfirmModal()">取 消</button>
+            <button class="modern-btn btn-primary" style="background-color: #ef4444; flex: 1;" onclick="doResetCode()">确 认 重 置</button>
+        </div>
+    </div>
+
     <script>
         // 现代化 Toast 提示系统
         function showToast(message, type = 'success') {
@@ -594,6 +756,7 @@
             enableSnippets: true,
             enableLiveAutocompletion: true
         });
+        editor.getSession().setUseWrapMode(false);
 
         function submit() {
             // 检查本地是否有 Token，没有则拦截并提示登录
@@ -654,36 +817,32 @@
                 var detail_text = "";
 
                 // 根据状态码判断最终的 OJ 状态
-                if (status == 0) {
-                    // 编译并运行成功，检查输出内容判断是否逻辑正确
-                    if (stdout.indexOf("Failed") !== -1 || stdout.indexOf("没有通过") !== -1) {
-                        badge_class = "status-wa";
-                        border_class = "border-wa";
-                        status_text = "解答错误 (Wrong Answer)";
-                        detail_text = stdout;
-                    }
-                    else {
-                        badge_class = "status-ac";
-                        border_class = "border-ac";
-                        status_text = "通过 (Accepted)";
-                        detail_text = stdout;
-                    }
+                if (reason === "AC") {
+                    badge_class = "status-ac"; border_class = "border-ac";
+                    status_text = "通过 (Accepted)"; detail_text = stdout || "运行成功，无输出";
                 }
-                else if (status == -3) {
-                    badge_class = "status-ce";
-                    border_class = "border-ce";
-                    status_text = "编译错误 (Compile Error)";
-                    detail_text = reason; // 后端读取的 compile_error 文件内容
+                else if (reason === "WA") {
+                    badge_class = "status-wa"; border_class = "border-wa";
+                    status_text = "解答错误 (Wrong Answer)"; detail_text = stdout;
                 }
-                else if (status == 24) { // SIGXCPU
-                    badge_class = "status-tle";
+                else if (reason === "CE") {
+                    badge_class = "status-ce"; border_class = "border-ce";
+                    status_text = "编译错误 (Compile Error)"; detail_text = stderr;
+                }
+                else if (reason === "TLE") {
+                    badge_class = "status-tle"; border_class = "border-wa";
                     status_text = "运行超时 (Time Limit Exceeded)";
-                    detail_text = "代码执行超出了题目限制的时间，请检查是否存在死循环或优化算法。";
+                    detail_text = "代码执行耗时超出了题目限制 (" + data.time_used_ms + "ms)，请检查是否存在死循环或优化算法复杂度。";
                 }
-                else {
-                    badge_class = "status-re";
+                else if (reason === "MLE") {
+                    badge_class = "status-mle"; border_class = "border-wa";
+                    status_text = "内存超限 (Memory Limit Exceeded)";
+                    detail_text = "代码消耗的空间超出了题目限制 (" + data.mem_used_kb + "KB)，可能存在大量无效数组开辟或内存泄漏。";
+                }
+                else { // RE
+                    badge_class = "status-re"; border_class = "border-wa";
                     status_text = "运行错误 (Runtime Error)";
-                    detail_text = reason + "\n" + (stderr ? stderr : "");
+                    detail_text = (stderr ? stderr : "程序异常崩溃 (可能由于段错误、数组越界或除以0引发)。");
                 }
 
                 // 动态构造美化后的 HTML
@@ -865,6 +1024,188 @@
                 .catch(error => {
                     showToast("网络请求失败，请检查服务器连接", "error");
                 });
+        }
+
+        // 历史记录前段业务逻辑
+        // 全局变量，用于暂存拉取到的历史记录数据
+        window.currentHistoryData = [];
+
+        function openHistoryModal() {
+            var token = localStorage.getItem("oj_token");
+            if (!token) {
+                showToast("请先登录后查看历史记录！", "warning");
+                openModal(); // 弹出登录框
+                return;
+            }
+
+            var number = $("#number").text();
+
+            // 发起获取历史记录的请求
+            fetch('/history/' + number, {
+                method: 'GET',
+                headers: {
+                    'Authorization': token
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    // 如果后端返回了特定的错误（如 -2 未登录）
+                    if (data.status && data.status < 0) {
+                        showToast(data.reason, "error");
+                        if (data.status === -2) setTimeout(logout, 1500);
+                        return;
+                    }
+
+                    // 数据拉取成功，开始渲染
+                    window.currentHistoryData = data;
+                    renderHistoryTable(data);
+
+                    // 显示弹窗
+                    document.getElementById('modal_overlay').style.display = 'block';
+                    document.getElementById('history_modal').style.display = 'block';
+                })
+                .catch(err => {
+                    showToast("获取历史记录失败，网络异常", "error");
+                });
+        }
+
+        function closeHistoryModal() {
+            document.getElementById('modal_overlay').style.display = 'none';
+            document.getElementById('history_modal').style.display = 'none';
+        }
+
+        function renderHistoryTable(data) {
+            var tbody = document.getElementById("history_tbody");
+            var emptyDiv = document.getElementById("history_empty");
+            tbody.innerHTML = "";
+
+            if (!data || data.length === 0) {
+                emptyDiv.style.display = "block";
+                return;
+            }
+
+            emptyDiv.style.display = "none";
+
+            // 遍历每一条历史记录并生成表格行
+            data.forEach((item, index) => {
+                var tr = document.createElement("tr");
+
+                // 提交时间
+                var tdTime = document.createElement("td");
+                tdTime.innerText = item.submit_time || "未知";
+
+                // 状态标签
+                var tdStatus = document.createElement("td");
+                var badgeClass = "status-re"; // 默认灰色
+                var statusText = item.reason;
+
+                if (item.reason === "AC") { badgeClass = "status-ac"; }
+                else if (item.reason === "WA") { badgeClass = "status-wa"; }
+                else if (item.reason === "CE") { badgeClass = "status-ce"; }
+                else if (item.reason === "TLE") { badgeClass = "status-tle"; }
+                else if (item.reason === "MLE") { badgeClass = "status-mle"; } // 【新增】
+                else { badgeClass = "status-re"; }
+
+                tdStatus.innerHTML = `<span class="badge-sm ${badgeClass}">${statusText}</span>`;
+
+                // 耗时
+                var tdTimeUsed = document.createElement("td");
+                if (item.reason === "CE") {
+                    tdTimeUsed.innerText = "--";
+                } else {
+                    tdTimeUsed.innerText = item.time_used_ms + " ms";
+                }
+
+                // 内存
+                var tdMemUsed = document.createElement("td");
+                if (item.reason === "CE") {
+                    tdMemUsed.innerText = "--";
+                } else {
+                    tdMemUsed.innerText = item.mem_used_kb + " KB";
+                }
+
+                // 操作按钮 (恢复代码)
+                var tdAction = document.createElement("td");
+                tdAction.innerHTML = `
+                    <button class="btn-view" onclick="viewCode(${index})">查看代码</button>
+                    <button class="btn-restore" onclick="restoreCode(${index})">恢复代码</button>
+                `;
+
+                tr.appendChild(tdTime);
+                tr.appendChild(tdStatus);
+                tr.appendChild(tdTimeUsed);
+                tr.appendChild(tdMemUsed);
+                tr.appendChild(tdAction);
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        function restoreCode(index) {
+            // 从全局数组中取出对应索引的代码
+            var oldCode = window.currentHistoryData[index].code;
+
+            // 覆盖当前的 ACE Editor 内容
+            editor.getSession().setValue(oldCode);
+
+            closeHistoryModal();
+            showToast("代码已成功恢复到编辑器！", "success");
+        }
+
+        // 查看历史代码交互
+        // 全局变量，初始化一个只读的查看器
+        var viewEditor = null;
+
+        function viewCode(index) {
+            var record = window.currentHistoryData[index];
+
+            // 1. 显示弹窗
+            document.getElementById('code_view_modal').style.display = 'block';
+            document.getElementById('code_view_title').innerText = "提交于: " + record.submit_time;
+
+            // 2. 延迟初始化或更新编辑器（确保 DOM 已加载）
+            if (!viewEditor) {
+                viewEditor = ace.edit("history_code_display");
+                viewEditor.setTheme("ace/theme/monokai");
+                viewEditor.session.setMode("ace/mode/c_cpp");
+                viewEditor.setFontSize(14);
+                viewEditor.setReadOnly(true); // 设为只读
+            }
+
+            viewEditor.getSession().setValue(record.code);
+        }
+
+        function closeCodeViewModal() {
+            document.getElementById('code_view_modal').style.display = 'none';
+        }
+
+        // 重置代码前端业务逻辑
+        function openResetConfirmModal() {
+            // 打开遮罩层和确认弹窗
+            document.getElementById('modal_overlay').style.display = 'block';
+            document.getElementById('reset_confirm_modal').style.display = 'block';
+        }
+
+        function closeResetConfirmModal() {
+            // 关闭确认弹窗 (如果其他弹窗没开，才关掉遮罩层)
+            document.getElementById('reset_confirm_modal').style.display = 'none';
+            if(document.getElementById('history_modal').style.display !== 'block' && 
+               document.getElementById('code_view_modal').style.display !== 'block') {
+                document.getElementById('modal_overlay').style.display = 'none';
+            }
+        }
+
+        function doResetCode() {
+            // 1. 获取隐藏在 div 中的原始预设代码
+            // 注意：一定要用 innerText，这样浏览器会自动把 &lt; 转换回 <，保证 C++ 代码语法正确
+            var originalCode = document.getElementById("original_pre_code").innerText;
+            
+            // 2. 将获取到的原始代码覆盖到当前的编辑器中
+            editor.getSession().setValue(originalCode);
+            
+            // 3. 关闭弹窗并给出 Toast 提示
+            closeResetConfirmModal();
+            showToast("代码已重置为初始状态", "success");
         }
     </script>
 </body>

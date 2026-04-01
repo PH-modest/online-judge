@@ -12,6 +12,38 @@
 
 namespace ns_util
 {
+    class HtmlUtil
+    {
+    public:
+        static void Encode(const std::string &html, std::string *out)
+        {
+            for (char ch : html)
+            {
+                switch (ch)
+                {
+                case '<':
+                    *out += "&lt;";
+                    break;
+                case '>':
+                    *out += "&gt;";
+                    break;
+                case '&':
+                    *out += "&amp;";
+                    break;
+                case '\"':
+                    *out += "&quot;";
+                    break;
+                case '\'':
+                    *out += "&apos;";
+                    break;
+                default:
+                    *out += ch;
+                    break;
+                }
+            }
+        }
+    };
+
     class TimeUtil
     {
     public:
@@ -132,9 +164,9 @@ namespace ns_util
     class StringUtil
     {
     public:
-        static void SplitString(const std::string &str, std::vector<std::string> *tokens,const std::string &sep)
+        static void SplitString(const std::string &str, std::vector<std::string> *tokens, const std::string &sep)
         {
-            boost::split(*tokens,str,boost::is_any_of(sep),boost::algorithm::token_compress_on);
+            boost::split(*tokens, str, boost::is_any_of(sep), boost::algorithm::token_compress_on);
         }
     };
 

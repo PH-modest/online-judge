@@ -38,7 +38,7 @@ namespace ns_compile_and_run
                 break;
             case -3:
                 // desc = "代码编译时发生错误";
-                FileUtil::ReadFile(PathUtil::CompileError(file_name),&desc,true);
+                FileUtil::ReadFile(PathUtil::CompileError(file_name), &desc, true);
                 break;
             case SIGABRT: // 6
             case SIGSEGV: // 11
@@ -60,25 +60,31 @@ namespace ns_compile_and_run
             return desc;
         }
 
-        static void RemoveTempFile(const std::string& file_name)
+        static void RemoveTempFile(const std::string &file_name)
         {
             std::string file_src = PathUtil::Src(file_name);
-            if(FileUtil::IsFileExist(file_src)) unlink(file_src.c_str());
+            if (FileUtil::IsFileExist(file_src))
+                unlink(file_src.c_str());
 
             std::string file_compiler_error = PathUtil::CompileError(file_name);
-            if(FileUtil::IsFileExist(file_compiler_error)) unlink(file_compiler_error.c_str());
+            if (FileUtil::IsFileExist(file_compiler_error))
+                unlink(file_compiler_error.c_str());
 
             std::string file_execute = PathUtil::Exe(file_name);
-            if(FileUtil::IsFileExist(file_execute)) unlink(file_execute.c_str());
+            if (FileUtil::IsFileExist(file_execute))
+                unlink(file_execute.c_str());
 
             std::string file_stdin = PathUtil::Stdin(file_name);
-            if(FileUtil::IsFileExist(file_stdin)) unlink(file_stdin.c_str());
+            if (FileUtil::IsFileExist(file_stdin))
+                unlink(file_stdin.c_str());
 
             std::string file_stdout = PathUtil::Stdout(file_name);
-            if(FileUtil::IsFileExist(file_stdout)) unlink(file_stdout.c_str());
+            if (FileUtil::IsFileExist(file_stdout))
+                unlink(file_stdout.c_str());
 
             std::string file_stderr = PathUtil::Stderr(file_name);
-            if(FileUtil::IsFileExist(file_stderr)) unlink(file_stderr.c_str());
+            if (FileUtil::IsFileExist(file_stderr))
+                unlink(file_stderr.c_str());
         }
 
         /*************************************
@@ -113,6 +119,8 @@ namespace ns_compile_and_run
             int status_code = 0;
             int run_result = 0;
             std::string file_name; // 需要内部形成的唯一文件名
+            int time_used_ms = 0;
+            int mem_used_kb = 0;
 
             if (code.size() == 0)
             {
@@ -138,7 +146,7 @@ namespace ns_compile_and_run
                 goto END;
             }
 
-            run_result = Runner::Run(file_name, cpu_limit, mem_limit);
+            run_result = Runner::Run(file_name, cpu_limit, mem_limit, &time_used_ms, &mem_used_kb);
             if (run_result < 0)
             {
                 status_code = -2; // 未知错误
@@ -157,6 +165,10 @@ namespace ns_compile_and_run
         END:
             out_value["status"] = status_code;
             out_value["reason"] = CodeToDesc(status_code, file_name);
+
+            out_value["time_used_ms"] = time_used_ms;
+            out_value["mem_used_kb"] = mem_used_kb;
+
             if (status_code == 0)
             {
                 // 整个过程全部成功
@@ -167,11 +179,27 @@ namespace ns_compile_and_run
                 FileUtil::ReadFile(PathUtil::Stderr(file_name), &value_stderr, true);
                 out_value["stderr"] = value_stderr;
             }
+            else if (status_code == -3)
+            {
+                // 专门处理编译错误：将编译阶段的报错也放进 stderr 字段，方便前端统一的高亮展示
+                std::string compile_err;
+                FileUtil::ReadFile(PathUtil::CompileError(file_name), &compile_err, true);
+                out_value["stderr"] = compile_err;
+                out_value["stdout"] = "";
+            }
+            else
+            {
+                // 其他运行崩溃错误 (段错误、除零等)
+                std::string value_stderr;
+                FileUtil::ReadFile(PathUtil::Stderr(file_name), &value_stderr, true);
+                out_value["stderr"] = value_stderr;
+                out_value["stdout"] = "";
+            }
 
             Json::StyledWriter writer;
             *out_json = writer.write(out_value);
 
-            //调试时关闭
+            // 调试时关闭
             RemoveTempFile(file_name);
         }
     };

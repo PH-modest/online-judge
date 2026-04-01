@@ -57,17 +57,25 @@ namespace ns_view
             tpl->Expand(html, &root);
         }
 
-        void OneExpandHtml(const ns_model::Question &question, std::string *html)
+        void OneExpandHtml(const ns_model::Question &q, std::string *html)
         {
+            // 准备转义后的变量
+            std::string encoded_header;
+            std::string encoded_desc;
+
+            // 调用工具类进行转义
+            ns_util::HtmlUtil::Encode(q.header, &encoded_header);
+            ns_util::HtmlUtil::Encode(q.desc, &encoded_desc);
+
             // 形成路径
             std::string src_html = template_path + "one_question.html";
             // 形成数据字典
             ctemplate::TemplateDictionary root("one_question");
-            root.SetValue("number", question.number);
-            root.SetValue("title", question.title);
-            root.SetValue("star", question.star);
-            root.SetValue("desc", question.desc);
-            root.SetValue("pre_code", question.header);
+            root.SetValue("number", q.number);
+            root.SetValue("title", q.title);
+            root.SetValue("star", q.star);
+            root.SetValue("desc", encoded_desc);
+            root.SetValue("pre_code", encoded_header);
             // 获取网页
             ctemplate::Template *tpl = ctemplate::Template::GetTemplate(src_html, ctemplate::DO_NOT_STRIP);
             // 开始完成渲染功能

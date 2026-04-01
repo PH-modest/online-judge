@@ -303,7 +303,7 @@ namespace ns_control
         // id: 100
         // code: #include...
         // input: ""
-        void Judge(const std::string &number, const std::string in_json, std::string *out_json)
+        void Judge(const std::string &number, const std::string in_json, std::string *out_json, int user_id = -1)
         {
             // LOG(DEBUG)<<in_json<<" \nnumber: "<<number<<"\n";
             // 0. 根据题目编号，直接拿到对应的题目细节
@@ -345,9 +345,80 @@ namespace ns_control
                     // 5. 将结果赋值给out_json
                     if (res->status == 200)
                     {
-                        *out_json = res->body;
                         m->DecLoad();
                         LOG(INFO) << "请求编译和运行服务成功..." << "\n";
+
+                        // 解析沙盒传回的原始数据
+                        Json::Reader out_reader;
+                        Json::Value out_value;
+
+                        if (out_reader.parse(res->body, out_value))
+                        {
+                            int status = out_value["status"].asInt();
+                            std::string reason = out_value["reason"].asString();
+                            std::string stdout_str = out_value["stdout"].asString();
+
+                            int time_used_ms = out_value["time_used_ms"].asInt();
+                            int mem_used_kb = out_value["mem_used_kb"].asInt();
+
+                            if (status == 24 || time_used_ms >= q.cpu_limit * 1000)
+                            {
+                                status = -1; // 业务状态置负
+                                reason = "TLE";
+                            }
+                            else if (mem_used_kb >= q.mem_limit * 0.8 || ((status == 6 || status == 11) && mem_used_kb >= q.mem_limit * 0.5))
+                            {
+                                status = -1; // 业务状态置负
+                                reason = "MLE";
+                            }
+                            else if (status == 0)
+                            {
+                                // 只有在没超时、没超内存的情况下，才去判断答案对不对
+                                if (stdout_str.find("Failed") != std::string::npos || stdout_str.find("没有通过") != std::string::npos)
+                                {
+                                    status = -1;
+                                    reason = "WA";
+                                }
+                                else
+                                {
+                                    status = 0;
+                                    reason = "AC";
+                                }
+                            }
+                            else if (status == -3)
+                            {
+                                reason = "CE";
+                            }
+                            else if (status > 0)
+                            {
+                                reason = "RE";
+                            }
+
+                            // 将规范化后的状态写回 JSON
+                            out_value["status"] = status;
+                            out_value["reason"] = reason;
+
+                            Json::FastWriter writer;
+                            *out_json = writer.write(out_value); // 覆盖原有结果，传给上一层(oj_server.cc)和前端
+
+                            // 将规范化后的记录存入数据库
+                            if (user_id > 0)
+                            {
+                                ns_model::Submission sub;
+                                sub.user_id = user_id;
+                                sub.question_number = number;
+                                sub.code = code;
+                                sub.status_code = status; // 存入标准状态码
+                                sub.reason = reason;      // 存入标准标识
+                                sub.time_used_ms = out_value["time_used_ms"].asInt();
+                                sub.mem_used_kb = out_value["mem_used_kb"].asInt();
+                                sub.stderr_msg = out_value["stderr"].asString();
+
+                                _model.InsertSubmission(sub);
+                                LOG(INFO) << "用户 " << user_id << " 题目 " << number << " 的提交记录已入库，状态: " << reason << "\n";
+                            }
+                        }
+
                         break;
                     }
                     m->DecLoad();
@@ -361,6 +432,36 @@ namespace ns_control
                     _load_blance.ShowMachines(); // 用来调试
                 }
             }
+        }
+
+        // 获取历史记录并打包为 JSON
+        bool GetHistory(int user_id, const std::string &number, std::string *out_json)
+        {
+            std::vector<ns_model::Submission> subs;
+            // 调用 Model 获取数据
+            if (!_model.GetSubmissions(user_id, number, &subs))
+            {
+                return false;
+            }
+
+            // 将数据转换为 JSON 数组
+            Json::Value root(Json::arrayValue);
+            for (const auto &s : subs)
+            {
+                Json::Value item;
+                item["code"] = s.code;
+                item["status_code"] = s.status_code;
+                item["reason"] = s.reason;
+                item["time_used_ms"] = s.time_used_ms;
+                item["mem_used_kb"] = s.mem_used_kb;
+                item["stderr_msg"] = s.stderr_msg;
+                item["submit_time"] = s.submit_time;
+                root.append(item);
+            }
+
+            Json::FastWriter writer;
+            *out_json = writer.write(root);
+            return true;
         }
     };
 }
