@@ -297,7 +297,8 @@
             <div class="nav-links">
                 <a href="/" style="font-size: 20px; font-weight: bold; color: #20b597;">刷题小站</a>
                 <a href="/all_questions">题库</a>
-                <a href="/leaderboard.html" style="color: #20b597;">排行榜</a> <a href="#">讨论</a>
+                <a href="/leaderboard.html" style="color: #20b597;">排行榜</a>
+                <a href="/classes.html" id="nav_classes" style="display: none; color: #8b5cf6; font-weight: bold;">我的班级</a>
                 <a href="javascript:void(0);" id="admin_add_nav" onclick="openAddModal()"
                     style="display: none; color: #f59e0b; font-weight: bold;">录入题目</a>
             </div>
@@ -512,6 +513,11 @@
 
                 if (role == "1" || role === 1) {
                     document.getElementById("admin_add_nav").style.display = "inline-block";
+                }
+
+                let navClasses = document.getElementById("nav_classes");
+                if (navClasses) {
+                    navClasses.style.display = "inline-block";
                 }
             }
 

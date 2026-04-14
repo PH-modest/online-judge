@@ -313,7 +313,7 @@
                 <a href="/" style="font-size: 20px; font-weight: bold; color: #20b597;">刷题小站</a>
                 <a onclick="fetchWithToken('/all_questions')" style="color: #20b597; cursor: pointer;">题库</a>
                 <a href="/leaderboard.html">排行榜</a>
-                <a href="#">讨论</a>
+                <a href="/classes.html" id="nav_classes" style="display: none; color: #8b5cf6; font-weight: bold;">我的班级</a>
                 <a href="javascript:void(0);" id="admin_add_nav" onclick="openAddModal()"
                     style="display: none; color: #f59e0b; font-weight: bold;">录入题目</a>
             </div>
@@ -584,6 +584,9 @@
 
                 let logoutBtn = document.getElementById("logout_btn");
                 if (logoutBtn) logoutBtn.style.display = "inline-block";
+
+                let navClasses = document.getElementById("nav_classes");
+                if (navClasses) navClasses.style.display = "inline-block";
             }
 
             // 判断如果是管理员，则显示录入题目按钮

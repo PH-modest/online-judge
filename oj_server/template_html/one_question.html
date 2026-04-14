@@ -98,7 +98,7 @@
             width: 100%;
             display: flex;
             justify-content: space-between;
-            align-items: flex-start; 
+            align-items: flex-start;
             padding: 15px 20px;
             box-sizing: border-box;
             background-color: #fdfdfd;
@@ -112,14 +112,14 @@
 
         .container .part2 .action-buttons {
             display: flex;
-            gap: 15px; 
-            flex-shrink: 0; 
+            gap: 15px;
+            flex-shrink: 0;
         }
 
         .container .part2 .btn-submit {
             width: 120px;
             height: 50px;
-            font-size: large;            
+            font-size: large;
             border-radius: 0.5ch;
             border: 0px;
             color: #FFF;
@@ -495,7 +495,8 @@
                 <a href="/" style="font-size: 20px; font-weight: bold; color: #20b597;">刷题小站</a>
                 <a href="/all_questions" style="color: #20b597;">题库</a>
                 <a href="/leaderboard.html">排行榜</a>
-                <a href="#">讨论</a>
+                <a href="/classes.html" id="nav_classes"
+                    style="display: none; color: #8b5cf6; font-weight: bold;">我的班级</a>
                 <a href="javascript:void(0);" id="admin_add_nav" onclick="openAddModal()"
                     style="display: none; color: #f59e0b; font-weight: bold;">录入题目</a>
             </div>
@@ -512,7 +513,10 @@
         <!-- 左右呈现：题目描述和预设代码 -->
         <div class="part1">
             <div class="left_desc">
-                <h3><span id="number">{{number}}</span>.{{title}}_{{star}}</h3>
+                <button onclick="smartGoBack()" style="position: relative; top: 10px; margin-bottom: 5px; padding: 6px 15px; font-size: 14px; cursor: pointer; background-color: white; border: 1px solid #ddd; border-radius: 4px; color: #555; font-weight: bold; transition: 0.2s; display: inline-flex; align-items: center;" onmouseover="this.style.backgroundColor='#f1f5f9'; this.style.color='#20b597';" onmouseout="this.style.backgroundColor='white'; this.style.color='#555';">
+                    <span style="margin-right: 5px; font-size: 16px;">←</span> 返回上一页
+                </button>
+                <h3><span id="number">{{number}}</span>.{{title}} {{star}}</h3>
                 <pre>{{desc}}</pre>
             </div>
 
@@ -528,7 +532,8 @@
             <div id="original_pre_code" style="display: none;">{{pre_code}}</div>
 
             <div class="action-buttons">
-                <button class="btn-submit" style="background-color: #ef4444;" onclick="openResetConfirmModal()">重置代码</button>
+                <button class="btn-submit" style="background-color: #ef4444;"
+                    onclick="openResetConfirmModal()">重置代码</button>
                 <button class="btn-submit" style="background-color: #6c757d;" onclick="openHistoryModal()">提交历史</button>
                 <button class="btn-submit" style="background-color: #20b597;" onclick="submit()">提交代码</button>
             </div>
@@ -675,21 +680,48 @@
         </div>
     </div>
 
-    <div id="reset_confirm_modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:30px; border-radius:12px; box-shadow:0 15px 50px rgba(0,0,0,0.3); z-index:1001; width: 340px; text-align: center;">
-        
+    <div id="reset_confirm_modal"
+        style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:30px; border-radius:12px; box-shadow:0 15px 50px rgba(0,0,0,0.3); z-index:1001; width: 340px; text-align: center;">
+
         <h3 style="margin-bottom: 15px; color: #333; font-size: 20px;">⚠️ 确认重置代码？</h3>
-        
+
         <p style="color: #666; font-size: 15px; line-height: 1.5; margin-bottom: 25px;">
             此操作将<strong style="color: #ef4444;">清空</strong>你当前编写的所有代码，并恢复为题目的初始状态。<br><br>此操作不可逆转！
         </p>
-        
+
         <div style="display: flex; justify-content: space-between; gap: 15px;">
-            <button class="modern-btn" style="background-color: #f1f5f9; color: #555; flex: 1;" onclick="closeResetConfirmModal()">取 消</button>
-            <button class="modern-btn btn-primary" style="background-color: #ef4444; flex: 1;" onclick="doResetCode()">确 认 重 置</button>
+            <button class="modern-btn" style="background-color: #f1f5f9; color: #555; flex: 1;"
+                onclick="closeResetConfirmModal()">取 消</button>
+            <button class="modern-btn btn-primary" style="background-color: #ef4444; flex: 1;" onclick="doResetCode()">确
+                认 重 置</button>
         </div>
     </div>
 
     <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentAssignId = urlParams.get('assign_id') ? parseInt(urlParams.get('assign_id')) : 0;
+
+        // 智能返回功能
+        function smartGoBack() {
+            // 1. 获取网址里的题单 ID
+            const urlParams = new URLSearchParams(window.location.search);
+            const assignId = urlParams.get('assign_id');
+
+            // 2. 如果浏览器的历史记录大于 1（说明是从上一个页面点击跳转过来的）
+            if (window.history.length > 1) {
+                window.history.back(); // 优先使用原生返回，这样能保留上一个页面的滚动条和选项卡状态
+            } else {
+                // 3. 兜底方案：如果是“在新标签页打开”导致没有历史记录
+                if (assignId && parseInt(assignId) > 0) {
+                    // 如果网址带题单ID，说明是班级作业，退回班级大厅
+                    window.location.href = '/classes.html';
+                } else {
+                    // 否则，默认退回自由题库大厅
+                    window.location.href = '/all_questions';
+                }
+            }
+        }
+
         // 现代化 Toast 提示系统
         function showToast(message, type = 'success') {
             const container = document.getElementById('toast_container');
@@ -784,7 +816,8 @@
                 },
                 data: JSON.stringify({
                     "code": code,
-                    "input": ""
+                    "input": "",
+                    "assignment_id": currentAssignId
                 }),
                 success: function (data) {
                     // 处理后端返回的 -2 状态码（Token过期或伪造）
@@ -793,6 +826,10 @@
                         setTimeout(() => {
                             logout();
                         }, 1500);
+                        return;
+                    }
+                    if (data.status === -4) {
+                        showToast("❌ 提交失败：" + data.reason, "error");
                         return;
                     }
                     // 成功得到结果
@@ -918,6 +955,11 @@
 
                 if (role == "1" || role === 1) {
                     document.getElementById("admin_add_nav").style.display = "inline-block";
+                }
+
+                let navClasses = document.getElementById("nav_classes");
+                if (navClasses) {
+                    navClasses.style.display = "inline-block";
                 }
             }
         };
@@ -1189,8 +1231,8 @@
         function closeResetConfirmModal() {
             // 关闭确认弹窗 (如果其他弹窗没开，才关掉遮罩层)
             document.getElementById('reset_confirm_modal').style.display = 'none';
-            if(document.getElementById('history_modal').style.display !== 'block' && 
-               document.getElementById('code_view_modal').style.display !== 'block') {
+            if (document.getElementById('history_modal').style.display !== 'block' &&
+                document.getElementById('code_view_modal').style.display !== 'block') {
                 document.getElementById('modal_overlay').style.display = 'none';
             }
         }
@@ -1199,10 +1241,10 @@
             // 1. 获取隐藏在 div 中的原始预设代码
             // 注意：一定要用 innerText，这样浏览器会自动把 &lt; 转换回 <，保证 C++ 代码语法正确
             var originalCode = document.getElementById("original_pre_code").innerText;
-            
+
             // 2. 将获取到的原始代码覆盖到当前的编辑器中
             editor.getSession().setValue(originalCode);
-            
+
             // 3. 关闭弹窗并给出 Toast 提示
             closeResetConfirmModal();
             showToast("代码已重置为初始状态", "success");
