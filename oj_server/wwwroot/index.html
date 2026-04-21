@@ -11,13 +11,11 @@
             padding: 0px;
         }
 
-        html,
-        body {
+        html, body {
             width: 100%;
             height: 100%;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f7f6;
-            /* 极浅的高级灰背景 */
             color: #333;
         }
 
@@ -26,7 +24,6 @@
             height: 60px;
             background-color: #ffffff;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-            /* 底部悬浮阴影 */
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -47,21 +44,131 @@
 
         .container .navbar .nav-links a:hover {
             color: #20b597;
-            /* 悬浮变成主题绿，去掉难看的背景色块 */
         }
 
-        .container .content {
-            width: 800px;
-            margin: 0px auto;
+        /* ====== 新增：现代化首页布局 ====== */
+        .main-layout {
+            max-width: 1100px;
+            margin: 40px auto;
+            display: flex;
+            gap: 30px;
+            padding: 0 20px;
+        }
+
+        /* 左侧主视觉引导区 */
+        .hero-section {
+            flex: 2;
+            background: #ffffff;
+            padding: 60px 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
             text-align: center;
-            margin: top 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
 
-        .container .content .font {
-            display: block;
-            margin-top: 20px;
-            text-decoration: none;
+        /* 右侧边栏 */
+        .sidebar {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
+
+        .card {
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            border-left: 4px solid #20b597;
+            padding-left: 12px;
+            text-align: left;
+        }
+
+        /* 公告列表样式 */
+        .announcement-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            text-align: left;
+        }
+
+        .announcement-list li {
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #555;
+            border-bottom: 1px dashed #eee;
+            padding-bottom: 12px;
+            line-height: 1.5;
+        }
+        .announcement-list li:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .announcement-list li .date {
+            color: #999;
+            font-size: 12px;
+            display: block;
+            margin-top: 6px;
+        }
+
+        /* 标签链接样式 */
+        .link-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            text-align: left;
+        }
+
+        .link-list a {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #f0fdfa;
+            color: #0f766e;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .link-list a:hover {
+            background: #14b8a6;
+            color: #fff;
+            transform: translateY(-2px);
+        }
+
+        .start-btn {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 14px 40px;
+            background: #20b597;
+            color: white;
+            text-decoration: none;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(32,181,151,0.2);
+        }
+
+        .start-btn:hover {
+            background: #1aa085;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(32,181,151,0.35);
+        }
+        /* ====== 布局样式结束 ====== */
 
         /* 现代化弹窗遮罩层 */
         .modal-overlay {
@@ -89,11 +196,9 @@
             font-weight: bold;
         }
 
-        /* 优化登录输入框和按钮 */
         .modern-input {
             width: 100%;
             box-sizing: border-box;
-            /* 防止边框撑破容器 */
             padding: 12px 15px;
             border: 1px solid #ddd;
             border-radius: 6px;
@@ -120,134 +225,44 @@
             transition: all 0.3s;
         }
 
-        .btn-primary {
-            background-color: #20b597;
-            color: white;
-        }
+        .btn-primary { background-color: #20b597; color: white; }
+        .btn-primary:hover { background-color: #1aa085; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(26, 160, 133, 0.3); }
+        .btn-dark { background-color: #333; color: white; }
+        .btn-dark:hover { background-color: #222; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); }
 
-        .btn-primary:hover {
-            background-color: #1aa085;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(26, 160, 133, 0.3);
-        }
+        .auth-switch { text-align: center; margin-top: 20px; font-size: 14px; color: #666; }
+        .auth-switch a { color: #20b597; text-decoration: none; font-weight: bold; cursor: pointer; }
+        .auth-switch a:hover { text-decoration: underline; }
 
-        .btn-dark {
-            background-color: #333;
-            color: white;
-        }
-
-        .btn-dark:hover {
-            background-color: #222;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-        }
-
-        .auth-switch {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 14px;
-            color: #666;
-        }
-
-        .auth-switch a {
-            color: #20b597;
-            text-decoration: none;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .auth-switch a:hover {
-            text-decoration: underline;
-        }
-
-        /* 右上角 Toast 提示框系统 */
-        #toast_container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-        }
-
+        /* Toast 提示框系统 */
+        #toast_container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
         .toast {
-            min-width: 250px;
-            padding: 15px 20px;
-            margin-bottom: 15px;
-            border-radius: 6px;
-            color: #fff;
-            font-size: 16px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-            opacity: 0;
-            transform: translateX(100%);
+            min-width: 250px; padding: 15px 20px; margin-bottom: 15px; border-radius: 6px; color: #fff; font-size: 16px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); opacity: 0; transform: translateX(100%);
             transition: opacity 0.3s, transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            display: flex; align-items: center; justify-content: space-between;
         }
+        .toast.show { opacity: 1; transform: translateX(0); }
+        .toast-success { background-color: #10b981; }
+        .toast-error { background-color: #ef4444; }
+        .toast-warning { background-color: #f59e0b; }
 
-        .toast.show {
-            opacity: 1;
-            transform: translateX(0);
-        }
-
-        .toast-success {
-            background-color: #10b981;
-        }
-
-        /* 成功绿 */
-        .toast-error {
-            background-color: #ef4444;
-        }
-
-        /* 错误红 */
-        .toast-warning {
-            background-color: #f59e0b;
-        }
-
-        /* 警告黄 */
         .modal-large {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 30px 40px;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
-            width: 650px;
-            /* 宽版弹窗 */
-            max-height: 85vh;
-            /* 限制最大高度 */
-            overflow-y: auto;
-            /* 内容超出时可滚动 */
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: white; padding: 30px 40px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            z-index: 1000; width: 650px; max-height: 85vh; overflow-y: auto;
         }
-
         .code-input {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-family: Consolas, 'Courier New', monospace;
-            /* 等宽字体，适合代码 */
-            font-size: 14px;
-            outline: none;
-            background-color: #282c34;
-            color: #abb2bf;
-            resize: vertical;
-            /* 允许垂直拖拽大小 */
+            width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #ddd; border-radius: 6px;
+            font-family: Consolas, 'Courier New', monospace; font-size: 14px; outline: none;
+            background-color: #282c34; color: #abb2bf; resize: vertical;
         }
-
-        .code-input:focus {
-            border-color: #20b597;
-        }
+        .code-input:focus { border-color: #20b597; }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <!--导航栏-->
         <div class="navbar">
             <div class="nav-links">
                 <a href="/" style="font-size: 20px; font-weight: bold; color: #20b597;">刷题小站</a>
@@ -266,11 +281,43 @@
                     / 注册</a>
             </div>
         </div>
-        <!--网页内容-->
-        <div class="content">
-            <h1 class="font">刷题小站</h1>
-            <p class="font">在线oj平台</p>
-            <a class="font" href="/all_questions">点击开始刷题！</a>
+        
+        <div class="main-layout">
+            <!-- https://api.dicebear.com/7.x/pixel-art/svg?seed=oj-platform -->
+            <div class="hero-section">
+                <img src="https://api.dicebear.com/7.x/shapes/svg?seed=oj-platform&backgroundColor=20b597" alt="Logo" style="width: 150px; margin-bottom: 25px;">
+                <h1 style="color: #333; font-size: 34px; margin-bottom: 15px;">欢迎来到 刷题小站</h1>
+                <p style="color: #666; font-size: 16px; line-height: 1.8; margin-bottom: 25px; max-width: 80%;">
+                    专为编程学习者打造的现代化在线判题系统。<br>
+                    海量题库、班级模块、实时排行榜，助你打好算法基础，挑战编程高峰！
+                </p>
+                <a class="start-btn" href="/all_questions">🚀 立即开始刷题</a>
+            </div>
+
+            <div class="sidebar">
+                
+                <div class="card">
+                    <div class="card-title">📌 系统公告</div>
+                    <ul class="announcement-list">
+                        <li>🎉 恭喜刷题小站全新版本正式上线！UI全面升级。<span class="date">刚刚更新</span></li>
+                        <li>🏫 新增“我的班级”功能，可接收老师专属题单。<span class="date">最近更新</span></li>
+                        <li>⚙️ 判题沙盒引擎已升级，提升判题速度与准确性。<span class="date">历史公告</span></li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">🔗 实用工具与链接</div>
+                    <div class="link-list">
+                        <a href="https://zh.cppreference.com/" target="_blank">C++ 参考手册</a>
+                        <a href="https://github.com/" target="_blank">GitHub</a>                        
+                        <a href="https://leetcode.cn/" target="_blank">LeetCode</a>
+                        <a href="https://www.nowcoder.com/" target="_blank">牛客网</a>
+                        <a href="https://visualgo.net/zh" target="_blank">VisuAlgo 算法动图</a>
+                        
+                    </div>
+                </div>
+
+            </div>
         </div>
     </div>
 
@@ -278,11 +325,8 @@
 
     <div id="modal_overlay" class="modal-overlay" onclick="closeModal()"></div>
 
-    <div id="auth_modal"
-        style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:40px; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,0.2); z-index:1000; width: 360px;">
-        <span onclick="closeModal()"
-            style="position:absolute; top:15px; right:20px; font-size:26px; cursor:pointer; color:#aaa; transition: 0.3s;"
-            onmouseover="this.style.color='#333'" onmouseout="this.style.color='#aaa'">&times;</span>
+    <div id="auth_modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:40px; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,0.2); z-index:1000; width: 360px;">
+        <span onclick="closeModal()" style="position:absolute; top:15px; right:20px; font-size:26px; cursor:pointer; color:#aaa; transition: 0.3s;" onmouseover="this.style.color='#333'" onmouseout="this.style.color='#aaa'">&times;</span>
 
         <div id="login_view">
             <h2 style="margin-bottom: 25px; color: #333; text-align: center;">欢迎回来</h2>
@@ -322,9 +366,7 @@
     </div>
 
     <div id="add_question_modal" class="modal-large">
-        <span onclick="closeAddModal()"
-            style="position:absolute; top:15px; right:20px; font-size:26px; cursor:pointer; color:#aaa; transition: 0.3s;"
-            onmouseover="this.style.color='#333'" onmouseout="this.style.color='#aaa'">&times;</span>
+        <span onclick="closeAddModal()" style="position:absolute; top:15px; right:20px; font-size:26px; cursor:pointer; color:#aaa; transition: 0.3s;" onmouseover="this.style.color='#333'" onmouseout="this.style.color='#aaa'">&times;</span>
 
         <h2 style="margin-bottom: 20px; color: #333; border-left: 4px solid #f59e0b; padding-left: 10px;">管理员录题系统</h2>
 
@@ -361,18 +403,15 @@
 
         <div class="form-group">
             <label>预设代码 (Header) - 展现给用户的初始代码</label>
-            <textarea id="add_header" class="code-input" rows="4"
-                placeholder="#include <iostream>\nusing namespace std;\n\nclass Solution {\npublic:\n    // 在此编写你的代码\n};"></textarea>
+            <textarea id="add_header" class="code-input" rows="4" placeholder="#include <iostream>\nusing namespace std;\n\nclass Solution {\npublic:\n    // 在此编写你的代码\n};"></textarea>
         </div>
 
         <div class="form-group">
             <label>测试用例 (Tail) - 隐藏在后台用于校验的 main 函数</label>
-            <textarea id="add_tail" class="code-input" rows="6"
-                placeholder="int main() {\n    Solution s;\n    // 添加 assert 或 if 校验输出结果\n    return 0;\n}"></textarea>
+            <textarea id="add_tail" class="code-input" rows="6" placeholder="int main() {\n    Solution s;\n    // 添加 assert 或 if 校验输出结果\n    return 0;\n}"></textarea>
         </div>
 
-        <button onclick="submitNewQuestion()" class="modern-btn btn-primary" style="background-color: #f59e0b;">确 认 录
-            入</button>
+        <button onclick="submitNewQuestion()" class="modern-btn btn-primary" style="background-color: #f59e0b;">确 认 录 入</button>
     </div>
 
     <script>
@@ -384,24 +423,19 @@
             toast.innerHTML = `<span>${message}</span>`;
             container.appendChild(toast);
 
-            // 触发重绘以播放动画
             setTimeout(() => toast.classList.add('show'), 10);
-
-            // 3秒后自动消失
             setTimeout(() => {
                 toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 300); // 等待动画结束再移除DOM
+                setTimeout(() => toast.remove(), 300); 
             }, 3000);
         }
 
-        // 打开弹窗并显示遮罩
         function openModal() {
             document.getElementById('modal_overlay').style.display = 'block';
             document.getElementById('auth_modal').style.display = 'block';
             switchAuthView('login');
         }
 
-        // 在登录和注册面板之间切换
         function switchAuthView(viewName) {
             if (viewName === 'login') {
                 document.getElementById('login_view').style.display = 'block';
@@ -412,7 +446,6 @@
             }
         }
 
-        // 关闭弹窗并隐藏遮罩
         function closeModal() {
             document.getElementById('modal_overlay').style.display = 'none';
             document.getElementById('auth_modal').style.display = 'none';
@@ -423,57 +456,40 @@
             document.getElementById('reg_confirm_password').value = '';
         }
 
-        // 登录请求逻辑
         function login(username, password) {
-            fetch('/login',
-                {
+            fetch('/login', {
                     method: 'POST',
-                    headers:
-                    {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username: username, password: password })
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 0) {
                         showToast("登录成功！", "success");
-                        // 将后端下发的 token 和 role 存入浏览器的本地存储
                         localStorage.setItem("oj_token", data.token);
                         localStorage.setItem("oj_role", data.role);
                         localStorage.setItem("oj_username", username);
-
-                        // 刷新页面或更新 UI 状态
-                        setTimeout(() => {
-                            location.reload();
-                        }, 1000);
-                    }
-                    else {
+                        setTimeout(() => { location.reload(); }, 1000);
+                    } else {
                         showToast("登录失败：" + data.reason, "error");
                     }
                 });
         }
 
-        // 退出登录逻辑
         function logout() {
-            // 退出就是直接清空本地的凭证
             localStorage.removeItem("oj_token");
             localStorage.removeItem("oj_role");
             localStorage.removeItem("oj_username");
             showToast("已退出登录", "success");
-            setTimeout(() => {
-                location.reload();
-            }, 1000);
+            setTimeout(() => { location.reload(); }, 1000);
         }
 
-        // 页面加载时的状态渲染 (判断是否已登录)
         window.onload = function () {
             let username = localStorage.getItem("oj_username");
             let token = localStorage.getItem("oj_token");
             let role = localStorage.getItem("oj_role");
 
             if (username && token) {
-                // 如果已登录，隐藏登录按钮，显示欢迎信息和退出按钮
                 document.getElementById("login_btn").style.display = "none";
                 document.getElementById("user_info").innerText = "欢迎，" + username;
                 document.getElementById("user_info").style.display = "inline-block";
@@ -482,15 +498,11 @@
                 if (role == "1" || role === 1) {
                     document.getElementById("admin_add_nav").style.display = "inline-block";
                 }
-
                 let navClasses = document.getElementById("nav_classes");
-                if (navClasses) {
-                    navClasses.style.display = "inline-block";
-                }
+                if (navClasses) { navClasses.style.display = "inline-block"; }
             }
         };
 
-        // 触发登录
         function doLoginAction() {
             let u = document.getElementById("login_username").value;
             let p = document.getElementById("login_password").value;
@@ -498,7 +510,6 @@
             login(u, p);
         }
 
-        // 触发注册 (带密码二次确认)
         function doRegisterAction() {
             let u = document.getElementById("reg_username").value;
             let p = document.getElementById("reg_password").value;
@@ -511,22 +522,18 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: u, password: p })
-            })
-                .then(response => response.json())
-                .then(data => {
+            }).then(response => response.json()).then(data => {
                     if (data.status === 0) {
                         showToast("注册成功！已为您切换至登录界面。", "success");
-                        // 注册成功后，自动切回登录页面，并帮用户填好刚刚注册的用户名
                         switchAuthView('login');
                         document.getElementById('login_username').value = u;
-                        document.getElementById('login_password').value = ''; // 密码留空让用户自己输
+                        document.getElementById('login_password').value = ''; 
                     } else {
                         showToast("注册失败：" + data.reason, "error");
                     }
                 });
         }
 
-        // 录题前端业务逻辑
         function openAddModal() {
             document.getElementById('modal_overlay').style.display = 'block';
             document.getElementById('add_question_modal').style.display = 'block';
@@ -535,7 +542,6 @@
         function closeAddModal() {
             document.getElementById('modal_overlay').style.display = 'none';
             document.getElementById('add_question_modal').style.display = 'none';
-            // 清空表单，防止下次打开残留上次数据
             document.getElementById('add_title').value = '';
             document.getElementById('add_desc').value = '';
             document.getElementById('add_header').value = '';
@@ -543,7 +549,7 @@
         }
 
         function submitNewQuestion() {
-            // 获取前端表单数据
+            // 注意：这里使用的是之前已经帮你修复后的正确发送逻辑
             let title = document.getElementById("add_title").value.trim();
             let star = document.getElementById("add_star").value;
             let desc = document.getElementById("add_desc").value.trim();
@@ -552,46 +558,35 @@
             let cpu = document.getElementById("add_cpu").value;
             let mem = document.getElementById("add_mem").value;
 
-            // 基础非空校验
             if (!title || !desc || !header || !tail) {
-                showToast("请完整填写标题、描述及代码片段！", "warning");
-                return;
+                showToast("请完整填写标题、描述及代码片段！", "warning"); return;
             }
+            
+            // 为了防止你在别的页面合并时出错，如果这页不涉及修改逻辑，我们恢复原本的录入请求
+            let bodyData = {
+                title: title, star: star, desc: desc, header: header, tail: tail,
+                cpu_limit: parseInt(cpu), mem_limit: parseInt(mem)
+            };
 
-            // 发起后端请求
             fetch('/admin/add_question', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    // 最关键的一步：必须将 JWT Token 放在请求头里供后端校验身份和权限！
                     'Authorization': localStorage.getItem("oj_token")
                 },
-                body: JSON.stringify({
-                    title: title,
-                    star: star,
-                    desc: desc,
-                    header: header,
-                    tail: tail,
-                    cpu_limit: parseInt(cpu),
-                    mem_limit: parseInt(mem)
-                })
+                body: JSON.stringify(bodyData)
             })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 0) {
-                        showToast("✅ 题目《" + title + "》录入成功！", "success");
-                        closeAddModal(); // 录入成功后自动关闭弹窗
-                    } else {
-                        // 后端拦截了重复标题或者Token失效
-                        showToast("❌ 录入失败：" + data.reason, "error");
-                        if (data.status === -2) { // 如果是Token过期，触发退出重新登录
-                            setTimeout(logout, 1500);
-                        }
-                    }
-                })
-                .catch(error => {
-                    showToast("网络请求失败，请检查服务器连接", "error");
-                });
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 0) {
+                    showToast("✅ 题目《" + title + "》录入成功！", "success");
+                    closeAddModal();
+                } else {
+                    showToast("❌ 录入失败：" + data.reason, "error");
+                    if (data.status === -2) setTimeout(logout, 1500);
+                }
+            })
+            .catch(error => { showToast("网络请求失败，请检查服务器连接", "error"); });
         }
     </script>
 </body>

@@ -763,5 +763,38 @@ namespace ns_control
             *out_json = writer.write(root);
             return true;
         }
+
+        // 修改题目
+        bool ModifyQuestion(const ns_model::Question &q)
+        {
+            return _model.UpdateQuestion(q);
+        }
+
+        // 删除题目
+        bool RemoveQuestion(const std::string &number)
+        {
+            return _model.DeleteQuestion(number);
+        }
+
+        // 获取单个题目详情（返回 JSON，用于编辑时回填数据）
+        bool GetQuestionJson(const std::string &number, std::string *out_json)
+        {
+            ns_model::Question q;
+            if (!_model.GetOneQuestion(number, &q)) return false;
+
+            Json::Value root;
+            root["number"] = q.number;
+            root["title"] = q.title;
+            root["star"] = q.star;
+            root["desc"] = q.desc;
+            root["header"] = q.header;
+            root["tail"] = q.tail;
+            root["cpu_limit"] = q.cpu_limit;
+            root["mem_limit"] = q.mem_limit;
+
+            Json::FastWriter writer;
+            *out_json = writer.write(root);
+            return true;
+        }
     };
 }

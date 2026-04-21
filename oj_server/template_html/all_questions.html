@@ -349,6 +349,7 @@
                     <th class="item">标题</th>
                     <th class="item" style="width: 100px;">难度</th>
                     <th class="item" style="width: 100px;">通过率</th>
+                    <th class="admin-op" style="width: 150px; display: none;">操作</th>
                 </tr>
                 {{#question_list}}
                 <tr>
@@ -357,6 +358,12 @@
                     <td class="item"><a href="/question/{{number}}">{{title}}</a></td>
                     <td class="item">{{star}}</td>
                     <td class="item" style="font-size: 16px; color: #666;">{{pass_rate}}</td>
+                    <td class="admin-op" style="display: none;">
+                        <button onclick="prepareEdit('{{number}}')"
+                            style="color: #20b597; border: none; background: none; cursor: pointer;">编辑</button> |
+                        <button onclick="deleteQuestion('{{number}}')"
+                            style="color: #ef4444; border: none; background: none; cursor: pointer;">删除</button>
+                    </td>
                 </tr>
                 {{/question_list}}
             </table>
@@ -479,7 +486,7 @@
                 .then(response => response.text())
                 .then(html => {
                     // 更新浏览器URL地址栏，保留参数状态
-                    if(window.location.pathname + window.location.search !== url) {
+                    if (window.location.pathname + window.location.search !== url) {
                         window.history.pushState({}, '', url);
                     }
 
@@ -497,7 +504,7 @@
         }
 
         // 监听浏览器的返回按钮，使用户按返回键时能正确重载带筛选的页面
-        window.onpopstate = function(event) {
+        window.onpopstate = function (event) {
             fetchWithToken(window.location.pathname + window.location.search);
         };
 
@@ -595,6 +602,9 @@
             let username = localStorage.getItem("oj_username");
             let token = localStorage.getItem("oj_token");
             let role = localStorage.getItem("oj_role");
+            if (role == "1") {
+                document.querySelectorAll('.admin-op').forEach(el => el.style.display = 'table-cell');
+            }
 
             if (username && token) {
                 // 加了 if 判断，防止某个页面的某个元素不存在导致 JS 报错阻断运行
@@ -623,24 +633,49 @@
             }
         }
 
-        // 页面加载时的状态渲染 (判断是否已登录)
-        // window.onload = function () {
-        //     let username = localStorage.getItem("oj_username");
-        //     let token = localStorage.getItem("oj_token");
-        //     let role = localStorage.getItem("oj_role");
+        // 删除题目函数
+        function deleteQuestion(number) {
+            if (!confirm("确定要删除编号为 " + number + " 的题目吗？此操作不可逆！")) return;
 
-        //     if (username && token) {
-        //         // 如果已登录，隐藏登录按钮，显示欢迎信息和退出按钮
-        //         document.getElementById("login_btn").style.display = "none";
-        //         document.getElementById("user_info").innerText = "欢迎，" + username;
-        //         document.getElementById("user_info").style.display = "inline-block";
-        //         document.getElementById("logout_btn").style.display = "inline-block";
+            fetch('/admin/delete_question/' + number, {
+                method: 'POST',
+                headers: { 'Authorization': localStorage.getItem("oj_token") }
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 0) {
+                        showToast("删除成功");
+                        location.reload();
+                    } else {
+                        showToast("删除失败", "error");
+                    }
+                });
+        }
 
-        //         if (role == "1" || role === 1) {
-        //             document.getElementById("admin_add_nav").style.display = "inline-block";
-        //         }
-        //     }
-        // };
+        // 编辑前的准备：获取数据并填入现有的“录题”弹窗中
+        let currentEditNumber = null; // 标记当前是否处于编辑模式
+
+        function prepareEdit(number) {
+            fetch('/admin/get_question/' + number)
+                .then(res => res.json())
+                .then(q => {
+                    currentEditNumber = number; // 记录题号
+                    // 回填弹窗数据
+                    document.getElementById('add_title').value = q.title;
+                    document.getElementById('add_star').value = q.star;
+                    document.getElementById('add_desc').value = q.desc;
+                    document.getElementById('add_header').value = q.header;
+                    document.getElementById('add_tail').value = q.tail;
+                    document.getElementById('add_cpu').value = q.cpu_limit;
+                    document.getElementById('add_mem').value = q.mem_limit;
+
+                    // 修改弹窗标题和按钮文字
+                    document.querySelector('#add_question_modal h2').innerText = "编辑题目 #" + number;
+                    document.querySelector('#add_question_modal button').innerText = "确认修改";
+
+                    openAddModal(); // 打开原本用于“新增”的那个弹窗
+                });
+        }
 
         // 触发登录
         function doLoginAction() {
@@ -692,6 +727,9 @@
             document.getElementById('add_desc').value = '';
             document.getElementById('add_header').value = '';
             document.getElementById('add_tail').value = '';
+            currentEditNumber = null;
+            document.querySelector('#add_question_modal h2').innerText = "管理员录题系统";
+            document.querySelector('#add_question_modal button').innerText = "确认录入";
         }
 
         // 根据下拉框发起带参数的请求
@@ -732,32 +770,37 @@
                 return;
             }
 
+            let url = currentEditNumber ? '/admin/update_question' : '/admin/add_question';
+            let bodyData = {
+                title: title, star: star, desc: desc, header: header, tail: tail,
+                cpu_limit: parseInt(cpu), mem_limit: parseInt(mem)
+            };
+            if (currentEditNumber) bodyData.number = currentEditNumber; // 修改模式带上题号
+
             // 发起后端请求
-            fetch('/admin/add_question', {
+            fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    // 最关键的一步：必须将 JWT Token 放在请求头里供后端校验身份和权限！
                     'Authorization': localStorage.getItem("oj_token")
                 },
-                body: JSON.stringify({
-                    title: title,
-                    star: star,
-                    desc: desc,
-                    header: header,
-                    tail: tail,
-                    cpu_limit: parseInt(cpu),
-                    mem_limit: parseInt(mem)
-                })
+                body: JSON.stringify(bodyData) // 使用动态构造的 bodyData
             })
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 0) {
-                        showToast("✅ 题目《" + title + "》录入成功！", "success");
-                        closeAddModal(); // 录入成功后自动关闭弹窗
+                        // 动态提示
+                        let msg = currentEditNumber ? "修改成功！" : "录入成功！";
+                        showToast("✅ 题目《" + title + "》" + msg, "success");
+                        closeAddModal();
+
+                        // 操作成功后延迟 0.5 秒刷新页面，让用户看到最新的题目列表
+                        setTimeout(() => {
+                            location.reload();
+                        }, 500);
+
                     } else {
-                        // 后端拦截了重复标题或者Token失效
-                        showToast("❌ 录入失败：" + data.reason, "error");
+                        showToast("❌ 操作失败：" + data.reason, "error");
                         if (data.status === -2) { // 如果是Token过期，触发退出重新登录
                             setTimeout(logout, 1500);
                         }

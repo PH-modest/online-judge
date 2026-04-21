@@ -889,6 +889,61 @@ namespace ns_model
             return true;
         }  
 
+        // 管理员修改题目信息
+        bool UpdateQuestion(const Question &q)
+        {
+            MYSQL *my = mysql_init(nullptr);
+            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0))
+                return false;
+            mysql_set_character_set(my, "utf8");
+
+            // 对文本内容进行转义，防止特殊字符导致SQL执行失败
+            char *esc_title = new char[q.title.length() * 2 + 1];
+            char *esc_desc = new char[q.desc.length() * 2 + 1];
+            char *esc_header = new char[q.header.length() * 2 + 1];
+            char *esc_tail = new char[q.tail.length() * 2 + 1];
+
+            mysql_real_escape_string(my, esc_title, q.title.c_str(), q.title.length());
+            mysql_real_escape_string(my, esc_desc, q.desc.c_str(), q.desc.length());
+            mysql_real_escape_string(my, esc_header, q.header.c_str(), q.header.length());
+            mysql_real_escape_string(my, esc_tail, q.tail.c_str(), q.tail.length());
+
+            std::string sql = "UPDATE oj_questions SET title='";
+            sql += esc_title;
+            sql += "', star='";
+            sql += q.star;
+            sql += "', `desc`='";
+            sql += esc_desc;
+            sql += "', header='";
+            sql += esc_header;
+            sql += "', tail='";
+            sql += esc_tail;
+            sql += "', cpu_limit=" + std::to_string(q.cpu_limit);
+            sql += ", mem_limit=" + std::to_string(q.mem_limit);
+            sql += " WHERE number=" + q.number;
+
+            int res = mysql_query(my, sql.c_str());
+            
+            delete[] esc_title; delete[] esc_desc; delete[] esc_header; delete[] esc_tail;
+            mysql_close(my);
+            return res == 0;
+        }
+
+        // 管理员删除题目
+        bool DeleteQuestion(const std::string &number)
+        {
+            MYSQL *my = mysql_init(nullptr);
+            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0))
+                return false;
+            
+            // 简单执行删除语句
+            std::string sql = "DELETE FROM oj_questions WHERE number = " + number;
+            int res = mysql_query(my, sql.c_str());
+            
+            mysql_close(my);
+            return res == 0;
+        }
+
         ~Model()
         {
         }
