@@ -156,10 +156,14 @@ namespace ns_model
             return true;
         }
 
-        bool GetAllQuestions(std::vector<Question> *out)
+        bool GetAllQuestions(std::vector<Question> *out, const std::string& star = "")
         {
-            std::string sql = "select * from ";
-            sql += oj_questions;
+            std::string sql = "select * from " + oj_questions;
+            if(star == "简单" || star == "中等" || star == "困难")
+            {
+                // sql += oj_questions;
+                sql += " where star='" + star + "'";
+            }            
             return QueryMySql(sql, out);
         }
 
@@ -883,7 +887,7 @@ namespace ns_model
             }
             mysql_close(my);
             return true;
-        }        
+        }  
 
         ~Model()
         {

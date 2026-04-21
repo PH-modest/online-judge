@@ -105,7 +105,9 @@ int main()
                 // Token 有效，使用获取到的 user_id
             }
         }
-        ctrl.AllQuestions(&html, user_id);
+        // 提取 URL 参数中的难度要求
+        std::string star = req.has_param("star")?req.get_param_value("star"):"";
+        ctrl.AllQuestions(&html, user_id, star);
         rsp.set_content(html, "text/html;charset=utf-8"); });
 
     // 用户要根据题目编号，获取题目的内容

@@ -243,11 +243,11 @@ namespace ns_control
         }
 
         // 根据题目数据构建网页
-        bool AllQuestions(std::string *html, int user_id = -1)
+        bool AllQuestions(std::string *html, int user_id = -1, const std::string& star = "")
         {
             bool ret = true;
             std::vector<ns_model::Question> all;
-            if (_model.GetAllQuestions(&all))
+            if (_model.GetAllQuestions(&all, star))
             {
                 sort(all.begin(), all.end(), [](const ns_model::Question &q1, const ns_model::Question &q2)
                      { return atoi(q1.number.c_str()) < atoi(q2.number.c_str()); });
