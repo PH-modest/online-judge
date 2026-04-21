@@ -313,7 +313,8 @@
                 <a href="/" style="font-size: 20px; font-weight: bold; color: #20b597;">刷题小站</a>
                 <a onclick="fetchWithToken('/all_questions')" style="color: #20b597; cursor: pointer;">题库</a>
                 <a href="/leaderboard.html">排行榜</a>
-                <a href="/classes.html" id="nav_classes" style="display: none; color: #8b5cf6; font-weight: bold;">我的班级</a>
+                <a href="/classes.html" id="nav_classes"
+                    style="display: none; color: #8b5cf6; font-weight: bold;">我的班级</a>
                 <a href="javascript:void(0);" id="admin_add_nav" onclick="openAddModal()"
                     style="display: none; color: #f59e0b; font-weight: bold;">录入题目</a>
             </div>
@@ -328,6 +329,19 @@
         </div>
         <div class="question_list">
             <h1>OnlineJuge题目列表</h1>
+
+            <div style="text-align: right; padding: 10px 20px 10px 0;">
+                <label for="star_filter" style="font-weight: bold; color: #555;">难度筛选：</label>
+                <select id="star_filter" class="modern-input"
+                    style="width: 120px; display: inline-block; cursor: pointer; padding: 8px;"
+                    onchange="filterQuestions()">
+                    <option value="">全部</option>
+                    <option value="简单">简单</option>
+                    <option value="中等">中等</option>
+                    <option value="困难">困难</option>
+                </select>
+            </div>
+
             <table>
                 <tr>
                     <th class="item" style="width: 80px;">状态</th>
@@ -464,17 +478,28 @@
             fetch(url, { headers: headers, cache: 'no-cache' })
                 .then(response => response.text())
                 .then(html => {
+                    // 更新浏览器URL地址栏，保留参数状态
+                    if(window.location.pathname + window.location.search !== url) {
+                        window.history.pushState({}, '', url);
+                    }
+
                     document.open();
                     document.write('<script>window.isFetchedWithToken = true;<\/script>' + html);
                     document.close();
                     // 页面重写后，需重新执行绑定事件（因为原有的 onload 不会再触发）
                     renderLoginStatus();
+                    restoreFilterState();
                 })
                 .catch(err => {
                     console.error("加载失败: ", err);
                     window.location.href = url; // 降级处理：直接普通跳转
                 });
         }
+
+        // 监听浏览器的返回按钮，使用户按返回键时能正确重载带筛选的页面
+        window.onpopstate = function(event) {
+            fetchWithToken(window.location.pathname + window.location.search);
+        };
 
         // 现代化 Toast 提示系统
         function showToast(message, type = 'success') {
@@ -669,6 +694,28 @@
             document.getElementById('add_tail').value = '';
         }
 
+        // 根据下拉框发起带参数的请求
+        function filterQuestions() {
+            let star = document.getElementById("star_filter").value;
+            let url = '/all_questions';
+            if (star) {
+                url += '?star=' + encodeURIComponent(star);
+            }
+            fetchWithToken(url);
+        }
+
+        // 重载页面后，恢复下拉菜单的选中状态
+        function restoreFilterState() {
+            let params = new URLSearchParams(window.location.search);
+            let star = params.get('star');
+            if (star) {
+                let filterElement = document.getElementById('star_filter');
+                if (filterElement) {
+                    filterElement.value = star;
+                }
+            }
+        }
+
         function submitNewQuestion() {
             // 获取前端表单数据
             let title = document.getElementById("add_title").value.trim();
@@ -721,11 +768,12 @@
                 });
         }
 
-       if (!window.isFetchedWithToken && localStorage.getItem("oj_token")) {
-            fetchWithToken('/all_questions');
+        if (!window.isFetchedWithToken && localStorage.getItem("oj_token")) {
+            fetchWithToken('/all_questions' + window.location.search);
         } else {
             // 如果已经是通过 Token 请求回来的带有状态的完整页面，或是根本没登录，正常渲染顶部导航栏即可
             renderLoginStatus();
+            restoreFilterState();
         }
     </script>
 </body>
