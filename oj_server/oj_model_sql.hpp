@@ -883,7 +883,7 @@ namespace ns_model
             }
             mysql_close(my);
             return true;
-        }
+        }        
 
         ~Model()
         {
