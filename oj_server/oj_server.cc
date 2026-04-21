@@ -699,6 +699,69 @@ int main()
             rsp.set_content("[]", "application/json;charset=utf-8");
         } });
 
+    // 获取题目详情用于编辑回填
+    svr.Get(R"(/admin/get_question/(\d+))", [&ctrl](const Request &req, Response &rsp) {
+        std::string number = req.matches[1];
+        std::string json_res;
+        if(ctrl.GetQuestionJson(number, &json_res)) {
+            rsp.set_content(json_res, "application/json;charset=utf-8");
+        } else {
+            rsp.set_content("{\"status\":-1}", "application/json;charset=utf-8");
+        }
+    });
+
+    // 管理员修改题目内容
+    svr.Post("/admin/update_question", [&ctrl](const Request &req, Response &rsp) {
+        Json::Value rsp_json; Json::FastWriter writer;
+        // 1. JWT 鉴权 (逻辑同 add_question)
+        std::string token = req.get_header_value("Authorization");
+        int user_id = 0, role = 0; std::string username = "";
+        if (!ns_util::JwtUtil::VerifyToken(token, &user_id, &username, &role) || role != 1) {
+            rsp_json["status"] = -2; rsp_json["reason"] = "权限不足";
+            rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); return;
+        }
+
+        // 2. 解析 JSON 并更新
+        Json::Reader reader; Json::Value req_json;
+        if (reader.parse(req.body, req_json)) {
+            ns_model::Question q;
+            q.number = req_json["number"].asString();
+            q.title = req_json["title"].asString();
+            q.star = req_json["star"].asString();
+            q.desc = req_json["desc"].asString();
+            q.header = req_json["header"].asString();
+            q.tail = req_json["tail"].asString();
+            q.cpu_limit = req_json["cpu_limit"].asInt();
+            q.mem_limit = req_json["mem_limit"].asInt();
+
+            if (ctrl.ModifyQuestion(q)) {
+                rsp_json["status"] = 0; rsp_json["reason"] = "修改成功";
+            } else {
+                rsp_json["status"] = -1; rsp_json["reason"] = "修改失败";
+            }
+        }
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+    });
+
+    // 管理员删除题目
+    svr.Post(R"(/admin/delete_question/(\d+))", [&ctrl](const Request &req, Response &rsp) {
+        Json::Value rsp_json; Json::FastWriter writer;
+        std::string token = req.get_header_value("Authorization");
+        int uid = 0, role = 0; std::string uname = "";
+        if (!ns_util::JwtUtil::VerifyToken(token, &uid, &uname, &role) || role != 1) {
+            rsp_json["status"] = -2;
+            rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); return;
+        }
+
+        std::string number = req.matches[1];
+        if (ctrl.RemoveQuestion(number)) {
+            rsp_json["status"] = 0;
+        } else {
+            rsp_json["status"] = -1;
+        }
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+    });
+
     svr.set_base_dir("./wwwroot");
     svr.listen("0.0.0.0", 8102);
     return 0;
