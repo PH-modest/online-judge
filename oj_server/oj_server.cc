@@ -2,6 +2,7 @@
 #include <signal.h>
 #include <jsoncpp/json/json.h>
 #include "../comm/log.hpp"
+#define CPPHTTPLIB_OPENSSL_SUPPORT
 #include "../comm/httplib.h"
 #include "../comm/jwt_util.hpp"
 #include "oj_control.hpp"
@@ -700,18 +701,19 @@ int main()
         } });
 
     // 获取题目详情用于编辑回填
-    svr.Get(R"(/admin/get_question/(\d+))", [&ctrl](const Request &req, Response &rsp) {
+    svr.Get(R"(/admin/get_question/(\d+))", [&ctrl](const Request &req, Response &rsp)
+            {
         std::string number = req.matches[1];
         std::string json_res;
         if(ctrl.GetQuestionJson(number, &json_res)) {
             rsp.set_content(json_res, "application/json;charset=utf-8");
         } else {
             rsp.set_content("{\"status\":-1}", "application/json;charset=utf-8");
-        }
-    });
+        } });
 
     // 管理员修改题目内容
-    svr.Post("/admin/update_question", [&ctrl](const Request &req, Response &rsp) {
+    svr.Post("/admin/update_question", [&ctrl](const Request &req, Response &rsp)
+             {
         Json::Value rsp_json; Json::FastWriter writer;
         // 1. JWT 鉴权 (逻辑同 add_question)
         std::string token = req.get_header_value("Authorization");
@@ -740,11 +742,11 @@ int main()
                 rsp_json["status"] = -1; rsp_json["reason"] = "修改失败";
             }
         }
-        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
-    });
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); });
 
     // 管理员删除题目
-    svr.Post(R"(/admin/delete_question/(\d+))", [&ctrl](const Request &req, Response &rsp) {
+    svr.Post(R"(/admin/delete_question/(\d+))", [&ctrl](const Request &req, Response &rsp)
+             {
         Json::Value rsp_json; Json::FastWriter writer;
         std::string token = req.get_header_value("Authorization");
         int uid = 0, role = 0; std::string uname = "";
@@ -759,8 +761,123 @@ int main()
         } else {
             rsp_json["status"] = -1;
         }
-        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
-    });
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); });
+
+    // AI 解题辅助接口
+    svr.Post("/api/ai_hint", [](const Request &req, Response &rsp)
+             {
+        Json::Value rsp_json;
+        Json::FastWriter writer;
+
+        // 1. 登录校验
+        if (!req.has_header("Authorization")) {
+            rsp_json["status"] = -2;
+            rsp_json["reason"] = "未登录，无法使用AI辅助！";
+            rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+            return;
+        }
+
+        std::string token = req.get_header_value("Authorization");
+        int user_id = 0, role = 0; std::string username = "";
+        if (!ns_util::JwtUtil::VerifyToken(token, &user_id, &username, &role)) {
+            rsp_json["status"] = -2;
+            rsp_json["reason"] = "登录凭证已过期！";
+            rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+            return;
+        }
+
+        // 2. 解析前端传来的题目与代码数据
+        Json::Reader reader;
+        Json::Value req_json;
+        if (!reader.parse(req.body, req_json)) {
+            rsp_json["status"] = -1;
+            rsp_json["reason"] = "JSON 解析失败";
+            rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+            return;
+        }
+
+        std::string title = req_json["title"].asString();
+        std::string desc = req_json["desc"].asString();
+        std::string code = req_json["code"].asString();
+
+        // 3. 构造请求给大语言模型
+        // std::string api_key = "6f7a4e2003b24bb1b39d55057b5846ca.k074TSA4zOaJz0y7"; // 智谱
+        std::string api_key = "sk-gobcxurlfrssmfubpmuedawhbydzspdudmsikoajwtsmtoxo"; // 硅基流动
+
+        // Prompt提示词工程，防止大模型直接把答案贴出来
+        std::string system_prompt = 
+            "你是一个专业的C++算法题辅导老师。你必须遵守以下铁律：\n"
+            "1. 绝不允许直接输出完整的正确代码！只给解题思路、Hint或几行核心伪代码。\n"
+            "2. 循序渐进地引导用户，多用反问句启发用户自己思考。\n"
+            "3. 每次回答保持简明扼要，控制在300字左右排版清晰。\n\n"
+            "【当前题目环境】\n"
+            "题目名称：[" + title + "]\n"
+            "题目要求：\n" + desc + "\n"
+            "用户当前正在编写的代码：\n" + code;
+
+        Json::Value ai_req;
+        ai_req["model"] = "Qwen/Qwen2.5-7B-Instruct";  // 大模型名称
+        ai_req["temperature"] = 0.5;
+
+        // a. 插入系统级提示词，设定角色和上下文
+        Json::Value sys_msg;
+        sys_msg["role"] = "system";
+        sys_msg["content"] = system_prompt;
+        ai_req["messages"].append(sys_msg);
+        
+        // b. 解析前端传来的历史对话记录，拼接到请求中，让模型拥有记忆
+        if (req_json.isMember("history") && req_json["history"].isArray()) {
+            for (const auto& msg : req_json["history"]) {
+                Json::Value history_msg;
+                history_msg["role"] = msg["role"].asString();
+                history_msg["content"] = msg["content"].asString();
+                ai_req["messages"].append(history_msg);
+            }
+        }
+
+        std::string ai_req_str = writer.write(ai_req);
+
+        // 4. 发起 HTTPS 请求到第三方 API (请确保编译时链接了 OpenSSL)
+        httplib::Client cli("https://api.siliconflow.cn"); 
+        cli.set_read_timeout(120, 0); // 设置超时，防止AI卡住导致线程阻塞
+        
+        cli.enable_server_certificate_verification(false);
+
+        httplib::Headers headers = {
+            {"Authorization", "Bearer " + api_key},
+            {"Content-Type", "application/json"}
+        };
+
+        if (auto res = cli.Post("/v1/chat/completions", headers, ai_req_str, "application/json")) {
+            if (res->status == 200) {
+                Json::Value ai_rsp;
+                if (reader.parse(res->body, ai_rsp)) {
+                    // 解析出模型的回复内容
+                    std::string hint = ai_rsp["choices"][0]["message"]["content"].asString();
+                    rsp_json["status"] = 0;
+                    rsp_json["hint"] = hint;
+                } else {
+                    rsp_json["status"] = -1;
+                    rsp_json["reason"] = "解析AI返回结果异常";
+                }
+            } else {
+                Json::Value err_rsp;
+                std::string err_msg = "状态码：" + std::to_string(res->status);
+                if (reader.parse(res->body, err_rsp) && err_rsp.isMember("error")) {
+                    // OpenAI 兼容格式的报错信息通常在这个字段里
+                    err_msg += "，" + err_rsp["error"]["message"].asString();
+                } else if (reader.parse(res->body, err_rsp) && err_rsp.isMember("message")) {
+                    err_msg += "，" + err_rsp["message"].asString();
+                }
+                rsp_json["status"] = -1;
+                rsp_json["reason"] = "AI服务器响应失败，" + err_msg;
+            }
+        } else {
+            std::string err_str = std::to_string(static_cast<int>(res.error()));
+            rsp_json["status"] = -1;
+            rsp_json["reason"] = "请求AI网络异常，底层错误原因：" + err_str;
+        }
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); });
 
     svr.set_base_dir("./wwwroot");
     svr.listen("0.0.0.0", 8102);
