@@ -507,6 +507,7 @@
             align-items: center;
             justify-content: center;
         }
+
         .ai-fab:hover {
             transform: scale(1.1) translateY(-5px);
             box-shadow: 0 6px 20px rgba(32, 181, 151, 0.6);
@@ -522,12 +523,13 @@
             height: 500px;
             background: white;
             border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
             z-index: 999;
             flex-direction: column;
             overflow: hidden;
             border: 1px solid #eee;
         }
+
         .ai-header {
             background: #20b597;
             color: white;
@@ -539,7 +541,7 @@
             cursor: move;
             user-select: none;
         }
-        
+
         /* AI 聊天窗口区域 */
         .ai-chat-window {
             flex: 1;
@@ -550,11 +552,13 @@
             flex-direction: column;
             gap: 12px;
         }
+
         /* 聊天气泡基础样式 */
         .chat-msg {
             display: flex;
             width: 100%;
         }
+
         .msg-content {
             max-width: 85%;
             padding: 10px 14px;
@@ -563,27 +567,37 @@
             line-height: 1.6;
             word-wrap: break-word;
         }
+
         /* AI 的消息 (靠左) */
-        .msg-ai { justify-content: flex-start; }
+        .msg-ai {
+            justify-content: flex-start;
+        }
+
         .msg-ai .msg-content {
             background-color: white;
             color: #333;
             border: 1px solid #e2e8f0;
             border-top-left-radius: 2px;
         }
+
         /* 用户的消息 (靠右) */
-        .msg-user { justify-content: flex-end; }
+        .msg-user {
+            justify-content: flex-end;
+        }
+
         .msg-user .msg-content {
             background-color: #20b597;
             color: white;
             border-top-right-radius: 2px;
         }
+
         /* 输入和操作区 */
         .ai-input-area {
             padding: 12px;
             background: white;
             border-top: 1px solid #eee;
         }
+
         .ai-input-area input {
             flex: 1;
             padding: 8px 12px;
@@ -591,14 +605,24 @@
             border-radius: 4px;
             outline: none;
         }
+
         .ai-input-area input:focus {
             border-color: #20b597;
         }
-        
+
         /* 针对 AI 回复中 Markdown 渲染的样式美化 (保留之前的) */
-        .msg-content p { margin-bottom: 8px; }
-        .msg-content p:last-child { margin-bottom: 0; }
-        .msg-content strong { color: #20b597; }
+        .msg-content p {
+            margin-bottom: 8px;
+        }
+
+        .msg-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .msg-content strong {
+            color: #20b597;
+        }
+
         .msg-content code {
             background-color: #e9ecef;
             padding: 2px 5px;
@@ -607,6 +631,7 @@
             color: #d63384;
             font-size: 13px;
         }
+
         .msg-content pre {
             background-color: #282c34;
             color: #abb2bf;
@@ -616,7 +641,12 @@
             margin: 8px 0;
             white-space: pre;
         }
-        .msg-content pre code { background-color: transparent; color: inherit; padding: 0; }
+
+        .msg-content pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+        }
     </style>
 </head>
 
@@ -646,7 +676,10 @@
         <!-- 左右呈现：题目描述和预设代码 -->
         <div class="part1">
             <div class="left_desc">
-                <button onclick="smartGoBack()" style="position: relative; top: 10px; margin-bottom: 5px; padding: 6px 15px; font-size: 14px; cursor: pointer; background-color: white; border: 1px solid #ddd; border-radius: 4px; color: #555; font-weight: bold; transition: 0.2s; display: inline-flex; align-items: center;" onmouseover="this.style.backgroundColor='#f1f5f9'; this.style.color='#20b597';" onmouseout="this.style.backgroundColor='white'; this.style.color='#555';">
+                <button onclick="smartGoBack()"
+                    style="position: relative; top: 10px; margin-bottom: 5px; padding: 6px 15px; font-size: 14px; cursor: pointer; background-color: white; border: 1px solid #ddd; border-radius: 4px; color: #555; font-weight: bold; transition: 0.2s; display: inline-flex; align-items: center;"
+                    onmouseover="this.style.backgroundColor='#f1f5f9'; this.style.color='#20b597';"
+                    onmouseout="this.style.backgroundColor='white'; this.style.color='#555';">
                     <span style="margin-right: 5px; font-size: 16px;">←</span> 返回上一页
                 </button>
                 <h3><span id="number">{{number}}</span>.{{title}} {{star}}</h3>
@@ -761,18 +794,15 @@
 
         <div class="form-group">
             <label>预设代码 (Header) - 展现给用户的初始代码</label>
-            <textarea id="add_header" class="code-input" rows="4"
-                placeholder="#include <iostream>\nusing namespace std;\n\nclass Solution {\npublic:\n    // 在此编写你的代码\n};"></textarea>
+            <textarea id="add_header" class="code-input" rows="6"></textarea>
         </div>
 
         <div class="form-group">
             <label>测试用例 (Tail) - 隐藏在后台用于校验的 main 函数</label>
-            <textarea id="add_tail" class="code-input" rows="6"
-                placeholder="int main() {\n    Solution s;\n    // 添加 assert 或 if 校验输出结果\n    return 0;\n}"></textarea>
+            <textarea id="add_tail" class="code-input" rows="8"></textarea>
         </div>
 
-        <button onclick="submitNewQuestion()" class="modern-btn btn-primary" style="background-color: #f59e0b;">确 认 录
-            入</button>
+        <button onclick="submitNewQuestion()" class="modern-btn btn-primary" style="background-color: #f59e0b;">确 认 录 入</button>
     </div>
 
     <div id="history_modal" class="modal-large" style="width: 800px; max-height: 80vh;">
@@ -837,22 +867,26 @@
             <span>🤖 AI 智能助教</span>
             <span style="cursor: pointer; font-size: 18px;" onclick="toggleAiPanel()">✖</span>
         </div>
-        
+
         <div class="ai-chat-window" id="ai_chat_window">
             <div class="chat-msg msg-ai">
-                <div class="msg-content">你好！我是你的专属AI助教。你可以主动向我提问，或者点击下方按钮让我帮你检查当前代码。<br><br><b>我会循序渐进地引导你，不会直接告诉你答案哦！</b></div>
+                <div class="msg-content">
+                    你好！我是你的专属AI助教。你可以主动向我提问，或者点击下方按钮让我帮你检查当前代码。<br><br><b>我会循序渐进地引导你，不会直接告诉你答案哦！</b></div>
             </div>
         </div>
-        
-        <div class="ai-loading" id="ai_loading" style="display: none; padding: 10px; text-align: center; color: #666; font-size: 13px; background: #f8f9fa;">
+
+        <div class="ai-loading" id="ai_loading"
+            style="display: none; padding: 10px; text-align: center; color: #666; font-size: 13px; background: #f8f9fa;">
             <span style="display: inline-block; animation: rotate 1s linear infinite;">⏳</span> AI 正在思考中...
         </div>
-        
+
         <div class="ai-input-area">
-            <button class="modern-btn btn-primary" onclick="checkCode()" style="margin-bottom: 10px; width: 100%; font-size: 13px; padding: 8px; background-color: #f59e0b;">一键检查当前代码</button>
+            <button class="modern-btn btn-primary" onclick="checkCode()"
+                style="margin-bottom: 10px; width: 100%; font-size: 13px; padding: 8px; background-color: #f59e0b;">一键检查当前代码</button>
             <div style="display: flex; gap: 8px;">
                 <input type="text" id="ai_chat_input" placeholder="输入你的疑问..." onkeypress="handleChatEnter(event)">
-                <button class="modern-btn btn-primary" style="width: 60px; padding: 0; font-size: 14px;" onclick="sendChatMessage()">发送</button>
+                <button class="modern-btn btn-primary" style="width: 60px; padding: 0; font-size: 14px;"
+                    onclick="sendChatMessage()">发送</button>
             </div>
         </div>
     </div>
@@ -1186,6 +1220,10 @@
             let cpu = document.getElementById("add_cpu").value;
             let mem = document.getElementById("add_mem").value;
 
+            // desc = desc.replace(/\\n/g, '\n').replace(/\\t/g, '\t');
+            // header = header.replace(/\\n/g, '\n').replace(/\\t/g, '\t');
+            // tail = tail.replace(/\\n/g, '\n').replace(/\\t/g, '\t');
+
             // 基础非空校验
             if (!title || !desc || !header || !tail) {
                 showToast("请完整填写标题、描述及代码片段！", "warning");
@@ -1441,7 +1479,7 @@
             const input = document.getElementById('ai_chat_input');
             const text = input.value.trim();
             if (!text) return;
-            
+
             input.value = ''; // 清空输入框
             sendToAi(text);
         }
@@ -1457,7 +1495,7 @@
 
             // 1. 将用户的消息渲染到界面上
             appendMessage('user', userText);
-            
+
             // 2. 将用户消息压入历史记录数组
             aiChatHistory.push({ role: 'user', content: userText });
 
@@ -1483,37 +1521,37 @@
                     history: aiChatHistory  // 传输聊天记录
                 })
             })
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('ai_loading').style.display = 'none';
-                
-                if (data.status === 0) {
-                    // 渲染 AI 回复
-                    appendMessage('ai', data.hint);
-                    // 将 AI 的回复也压入历史记录
-                    aiChatHistory.push({ role: 'assistant', content: data.hint });
-                } else {
-                    appendMessage('ai', `<span style="color:#ef4444;">获取提示失败：${data.reason}</span>`);
-                    aiChatHistory.pop(); // 失败的话把刚刚推入的用户消息弹出来，防止上下文污染
-                }
-            })
-            .catch(err => {
-                document.getElementById('ai_loading').style.display = 'none';
-                appendMessage('ai', '<span style="color:#ef4444;">网络请求异常，请检查服务器连接。</span>');
-                aiChatHistory.pop();
-            });
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('ai_loading').style.display = 'none';
+
+                    if (data.status === 0) {
+                        // 渲染 AI 回复
+                        appendMessage('ai', data.hint);
+                        // 将 AI 的回复也压入历史记录
+                        aiChatHistory.push({ role: 'assistant', content: data.hint });
+                    } else {
+                        appendMessage('ai', `<span style="color:#ef4444;">获取提示失败：${data.reason}</span>`);
+                        aiChatHistory.pop(); // 失败的话把刚刚推入的用户消息弹出来，防止上下文污染
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('ai_loading').style.display = 'none';
+                    appendMessage('ai', '<span style="color:#ef4444;">网络请求异常，请检查服务器连接。</span>');
+                    aiChatHistory.pop();
+                });
         }
 
         // 辅助函数：向聊天窗口追加气泡
         function appendMessage(role, text) {
             const chatWindow = document.getElementById('ai_chat_window');
-            
+
             const msgDiv = document.createElement('div');
             msgDiv.className = `chat-msg ${role === 'user' ? 'msg-user' : 'msg-ai'}`;
-            
+
             const contentDiv = document.createElement('div');
             contentDiv.className = 'msg-content';
-            
+
             if (role === 'ai') {
                 // AI 消息需要通过 marked 渲染 Markdown
                 contentDiv.innerHTML = marked.parse(text);
@@ -1521,10 +1559,10 @@
                 // 用户消息直接作为纯文本处理即可
                 contentDiv.innerText = text;
             }
-            
+
             msgDiv.appendChild(contentDiv);
             chatWindow.appendChild(msgDiv);
-            
+
             // 自动滚动到最底部
             chatWindow.scrollTop = chatWindow.scrollHeight;
         }
@@ -1534,64 +1572,64 @@
             let isDragging = false;
             let startX, startY, initialLeft, initialTop;
 
-            dragHandle.addEventListener('mousedown', function(e) {
+            dragHandle.addEventListener('mousedown', function (e) {
                 // 如果点击的是关闭面板按钮(✖)，不触发拖拽
                 if (e.target.tagName.toLowerCase() === 'span' && e.target.innerText === '✖') return;
-                
+
                 isDragging = true;
                 if (isFab) window._isFabDragged = false; // 重置拖动标记
-                
+
                 const rect = dragTarget.getBoundingClientRect();
                 startX = e.clientX;
                 startY = e.clientY;
-                
+
                 // 剥离原来的 right 和 bottom，切换为绝对的 left 和 top 定位
                 dragTarget.style.right = 'auto';
                 dragTarget.style.bottom = 'auto';
                 initialLeft = rect.left;
                 initialTop = rect.top;
-                
+
                 dragTarget.style.left = initialLeft + 'px';
                 dragTarget.style.top = initialTop + 'px';
-                
+
                 // 暂停过渡动画，防止拖拽时有延迟感
                 dragTarget.style.transition = 'none';
                 dragHandle.style.cursor = 'grabbing';
-                
+
                 e.preventDefault(); // 防止拖拽时意外选中页面文字
             });
 
-            document.addEventListener('mousemove', function(e) {
+            document.addEventListener('mousemove', function (e) {
                 if (!isDragging) return;
-                
+
                 let dx = e.clientX - startX;
                 let dy = e.clientY - startY;
-                
+
                 // 【核心机制】：只要鼠标按住并移动了超过 3 像素，我们就认为这是“拖动”而不是“点击”
                 if (isFab && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
                     window._isFabDragged = true;
                 }
-                
+
                 let newX = initialLeft + dx;
                 let newY = initialTop + dy;
-                
+
                 // 边界约束，防止悬浮窗被拖出屏幕外找不到了
                 const maxX = window.innerWidth - dragTarget.offsetWidth;
                 const maxY = window.innerHeight - dragTarget.offsetHeight;
                 newX = Math.max(0, Math.min(newX, maxX));
                 newY = Math.max(0, Math.min(newY, maxY));
-                
+
                 dragTarget.style.left = newX + 'px';
                 dragTarget.style.top = newY + 'px';
             });
 
-            document.addEventListener('mouseup', function() {
+            document.addEventListener('mouseup', function () {
                 if (isDragging) {
                     isDragging = false;
                     // 恢复原有的过渡动画和鼠标样式
-                    dragTarget.style.transition = ''; 
+                    dragTarget.style.transition = '';
                     dragHandle.style.cursor = isFab ? 'pointer' : 'move';
-                    
+
                     // 延迟一小会儿再清空标记，确保 click 事件读取到的是 true，从而被成功拦截
                     if (isFab) {
                         setTimeout(() => { window._isFabDragged = false; }, 50);
@@ -1600,21 +1638,21 @@
             });
         }
 
-        window.addEventListener('DOMContentLoaded', function() {
+        window.addEventListener('DOMContentLoaded', function () {
             // 1. 让悬浮球自己可以被拖动
             const fabElement = document.querySelector('.ai-fab');
             if (fabElement) {
-                makeDraggable(fabElement, fabElement, true);   
+                makeDraggable(fabElement, fabElement, true);
             }
 
             // 2. 让提示面板可以通过抓取头部被拖动
             const panelElement = document.getElementById('ai_panel');
             const headerElement = document.querySelector('.ai-header');
             if (panelElement && headerElement) {
-                makeDraggable(headerElement, panelElement, false); 
+                makeDraggable(headerElement, panelElement, false);
             }
         });
-    </script> 
+    </script>
 </body>
 
 </html>
