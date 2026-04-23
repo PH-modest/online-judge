@@ -374,15 +374,25 @@ namespace ns_control
                             else if (status == 0)
                             {
                                 // 只有在没超时、没超内存的情况下，才去判断答案对不对
-                                if (stdout_str.find("Failed") != std::string::npos || stdout_str.find("没有通过") != std::string::npos)
+                                // 增加对 "WA" 关键字以及全匹配的精准拦截
+                                if (stdout_str.find("Failed") != std::string::npos || 
+                                    stdout_str.find("没有通过") != std::string::npos ||
+                                    stdout_str.find("WA") != std::string::npos) 
                                 {
                                     status = -1;
                                     reason = "WA";
                                 }
-                                else
+                                else if (stdout_str.find("AC") != std::string::npos)
                                 {
                                     status = 0;
                                     reason = "AC";
+                                }
+                                else
+                                {
+                                    // 极其严格的兜底：如果既没有报 WA 也没有报 AC，
+                                    // 说明用户可能把代码的主函数写崩了，或者完全没有任何有效输出
+                                    status = -1;
+                                    reason = "WA";
                                 }
                             }
                             else if (status == -3)
