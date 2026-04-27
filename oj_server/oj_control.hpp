@@ -243,11 +243,13 @@ namespace ns_control
         }
 
         // 根据题目数据构建网页
-        bool AllQuestions(std::string *html, int user_id = -1, const std::string &star = "")
+        bool AllQuestions(std::string *html, int user_id = -1, const std::string &star = "", const std::string &keyword = "")
         {
             bool ret = true;
             std::vector<ns_model::Question> all;
-            if (_model.GetAllQuestions(&all, star))
+            
+            // 将 keyword 传给底层 Model
+            if (_model.GetAllQuestions(&all, star, keyword))
             {
                 sort(all.begin(), all.end(), [](const ns_model::Question &q1, const ns_model::Question &q2)
                      { return atoi(q1.number.c_str()) < atoi(q2.number.c_str()); });
@@ -257,7 +259,6 @@ namespace ns_control
                 {
                     _model.GetUserQuestionStates(user_id, &states);
                 }
-                // 获取题目信息成功，将所有题目数据构建成网页
                 _view.AllExpandHtml(all, states, html);
             }
             else
@@ -754,10 +755,10 @@ namespace ns_control
         }
 
         // 组装所有题目列表
-        bool GetAllQuestionsList(std::string *out_json)
+        bool GetAllQuestionsList(std::string *out_json, const std::string& keyword = "")
         {
             std::vector<ns_model::Question> qs;
-            if (!_model.GetAllQuestionsBrief(&qs))
+            if (!_model.GetAllQuestionsBrief(&qs, keyword))
                 return false;
 
             Json::Value root(Json::arrayValue);

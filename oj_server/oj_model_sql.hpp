@@ -156,13 +156,33 @@ namespace ns_model
             return true;
         }
 
-        bool GetAllQuestions(std::vector<Question> *out, const std::string& star = "")
+        bool GetAllQuestions(std::vector<Question> *out, const std::string& star = "", const std::string& keyword = "")
         {
-            std::string sql = "select * from " + oj_questions;
+            // 使用 WHERE 1=1 方便后续灵活拼接 AND 条件
+            std::string sql = "SELECT * FROM " + oj_questions + " WHERE 1=1";
+            
             if(star == "简单" || star == "中等" || star == "困难")
             {
-                // sql += oj_questions;
-                sql += " where star='" + star + "'";
+                sql += " AND star='" + star + "'";
+            }
+            
+            if(!keyword.empty())
+            {
+                MYSQL *my = mysql_init(nullptr);
+                if (nullptr != mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0)) {
+                    mysql_set_character_set(my, "utf8");
+                    char *esc_keyword = new char[keyword.length() * 2 + 1];
+                    mysql_real_escape_string(my, esc_keyword, keyword.c_str(), keyword.length());
+                    
+                    sql += " AND (title LIKE '%";
+                    sql += esc_keyword;
+                    sql += "%' OR number LIKE '%";
+                    sql += esc_keyword;
+                    sql += "%')";
+                    
+                    delete[] esc_keyword;
+                    mysql_close(my);
+                }
             }            
             return QueryMySql(sql, out);
         }
@@ -889,35 +909,6 @@ namespace ns_model
             return count;
         }
 
-        // 获取所有题目的简要信息
-        bool GetAllQuestionsBrief(std::vector<Question> *qs)
-        {
-            MYSQL *my = mysql_init(nullptr);
-            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0))
-                return false;
-            mysql_set_character_set(my, "utf8");
-
-            // 只需要获取题号、标题、难度，不需要拉取大段的代码文本
-            std::string sql = "SELECT number, title, star FROM oj_questions ORDER BY number ASC";
-            if (0 == mysql_query(my, sql.c_str()))
-            {
-                MYSQL_RES *res = mysql_store_result(my);
-                int rows = mysql_num_rows(res);
-                for (int i = 0; i < rows; i++)
-                {
-                    MYSQL_ROW row = mysql_fetch_row(res);
-                    Question q;
-                    q.number = row[0] ? row[0] : "";
-                    q.title = row[1] ? row[1] : "";
-                    q.star = row[2] ? row[2] : "";
-                    qs->push_back(q);
-                }
-                mysql_free_result(res);
-            }
-            mysql_close(my);
-            return true;
-        }  
-
         // 管理员修改题目信息
         bool UpdateQuestion(const Question &q)
         {
@@ -1055,6 +1046,52 @@ namespace ns_model
             }
             mysql_close(my);
             return ret == 0;
+        }
+
+        // 获取所有题目的简要信息（支持关键词模糊搜索题号或标题）
+        bool GetAllQuestionsBrief(std::vector<Question> *q, const std::string &keyword = "")
+        {
+            MYSQL *my = mysql_init(nullptr);
+            if(nullptr == mysql_real_connect(my, host.c_str(),user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0))
+                return false;
+            mysql_set_character_set(my, "utf8");
+
+            std::string sql = "SELECT number, title, star FROM oj_questions";
+
+            if(!keyword.empty())
+            {
+                char *esc_keyword = new char[keyword.length() * 2 + 1];
+                mysql_real_escape_string(my, esc_keyword, keyword.c_str(), keyword.length());
+
+                // 修复了 WHRER 的拼写错误
+                sql += " WHERE title LIKE '%";
+                sql += esc_keyword;
+                sql += "%' OR number LIKE '%";
+                sql += esc_keyword;
+                sql += "%'";
+
+                delete[] esc_keyword;
+            }
+
+            sql += " ORDER BY number ASC";
+
+            if(0 == mysql_query(my, sql.c_str()))
+            {
+                MYSQL_RES *res = mysql_store_result(my);
+                int rows = mysql_num_rows(res);
+                for(int i=0; i<rows; i++)
+                {
+                    MYSQL_ROW row = mysql_fetch_row(res);
+                    Question tmp;
+                    tmp.number = row[0] ? row[0] : "";
+                    tmp.title = row[1] ? row[1] : "";
+                    tmp.star = row[2] ? row[2] : "";
+                    q->push_back(tmp);
+                }
+                mysql_free_result(res);
+            }
+            mysql_close(my);
+            return true;
         }
 
         ~Model()

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>在线OJ-题目列表</title>
+    <title>灵犀OJ-题目列表</title>
     <style>
         /* 起手式, 100%保证我们的样式设置可以不受默认影响 */
         * {
@@ -55,7 +55,7 @@
         }
 
         .container .question_list {
-            padding-top: 50px;
+            padding-top: 20px;
             width: 800px;
             height: 100%;
             margin: 0px auto;
@@ -310,7 +310,7 @@
         <!-- 导航栏 -->
         <div class="navbar">
             <div class="nav-links">
-                <a href="/" style="font-size: 20px; font-weight: bold; color: #20b597;">刷题小站</a>
+                <a href="/" style="font-size: 20px; font-weight: bold; color: #20b597;">灵犀OJ</a>
                 <a onclick="fetchWithToken('/all_questions')" style="color: #20b597; cursor: pointer;">题库</a>
                 <a href="/leaderboard.html">排行榜</a>
                 <a href="/classes.html" id="nav_classes"
@@ -329,18 +329,18 @@
         </div>
 
         <script>
-            (function() {
+            (function () {
                 let username = localStorage.getItem("oj_username");
                 let token = localStorage.getItem("oj_token");
                 let role = localStorage.getItem("oj_role");
 
                 if (username && token) {
                     document.getElementById("login_btn").style.display = "none";
-                    
+
                     let userInfo = document.getElementById("user_info");
                     userInfo.innerText = "欢迎，" + username;
                     userInfo.style.display = "inline-block";
-                    
+
                     document.getElementById("logout_btn").style.display = "inline-block";
 
                     if (role == "1" || role === 1) {
@@ -354,9 +354,15 @@
         </script>
 
         <div class="question_list">
-            <h1>OnlineJuge题目列表</h1>
+            <h1>灵犀OJ题目列表</h1>
 
-            <div style="text-align: right; padding: 10px 20px 10px 0;">
+            <div style="display: flex; justify-content: flex-end; align-items: center; gap: 15px; margin-bottom: 20px; margin-top: 20px;">
+                <div class="search-box" style="position: relative; width: 250px;">
+                    <input type="text" id="keyword_search" class="modern-input" placeholder="搜题号或标题..."
+                        style="padding-left: 35px;" oninput="debounceFilterAllQuestions()">
+                    <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%);">🔍</span>
+                </div>
+
                 <label for="star_filter" style="font-weight: bold; color: #555;">难度筛选：</label>
                 <select id="star_filter" class="modern-input"
                     style="width: 120px; display: inline-block; cursor: pointer; padding: 8px;"
@@ -501,6 +507,22 @@
     </div>
 
     <script>
+        // 联动筛选逻辑
+        function filterAllQuestions() {
+            let star = document.getElementById("star_filter").value;
+            let keyword = document.getElementById("keyword_search").value.trim();
+
+            let url = '/all_questions';
+            let params = [];
+            if (star) params.push('star=' + encodeURIComponent(star));
+            if (keyword) params.push('keyword=' + encodeURIComponent(keyword));
+
+            if (params.length > 0) url += '?' + params.join('&');
+
+            // 使用你原本的 fetchWithToken 或直接跳转
+            fetchWithToken(url);
+        }
+
         function fetchWithToken(url) {
             let token = localStorage.getItem("oj_token");
             let headers = {};
@@ -768,14 +790,38 @@
             fetchWithToken(url);
         }
 
+        // 搜索防抖逻辑
+        let searchDebounceTimer = null;
+        function debounceFilterAllQuestions() {
+            if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+            // 用户停止输入 500ms 后自动触发搜索，如果把字全删了也会触发，显示全部
+            searchDebounceTimer = setTimeout(() => {
+                filterAllQuestions();
+            }, 500);
+        }
+
         // 重载页面后，恢复下拉菜单的选中状态
         function restoreFilterState() {
             let params = new URLSearchParams(window.location.search);
             let star = params.get('star');
+            let keyword = params.get('keyword');
+
             if (star) {
                 let filterElement = document.getElementById('star_filter');
                 if (filterElement) {
                     filterElement.value = star;
+                }
+            }
+
+            // 由于网页是被后端重绘的，我们需要重新把焦点还给搜索框
+            if (keyword !== null) {
+                let searchBox = document.getElementById('keyword_search');
+                if (searchBox) {
+                    searchBox.value = keyword;
+                    // 重新让搜索框获得焦点
+                    searchBox.focus();
+                    // 将光标移动到文字的最末尾，保证你连续打字不会被打断！
+                    searchBox.setSelectionRange(keyword.length, keyword.length);
                 }
             }
         }

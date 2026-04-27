@@ -158,7 +158,9 @@ int main()
         }
         // 提取 URL 参数中的难度要求
         std::string star = req.has_param("star")?req.get_param_value("star"):"";
-        ctrl.AllQuestions(&html, user_id, star);
+        // 提取 URL 参数中的搜索关键词
+        std::string keyword = req.has_param("keyword") ? req.get_param_value("keyword") : "";
+        ctrl.AllQuestions(&html, user_id, star, keyword);
         rsp.set_content(html, "text/html;charset=utf-8"); });
 
     // 用户要根据题目编号，获取题目的内容
@@ -747,9 +749,11 @@ int main()
 
     // 获取全部题目简略列表用于选择器
     svr.Get("/api/question/list", [&ctrl](const Request &req, Response &rsp)
-            {
+    {
+        std::string keyword = req.has_param("keyword") ? req.get_param_value("keyword") : "";
+        
         std::string result;
-        if (ctrl.GetAllQuestionsList(&result)) {
+        if (ctrl.GetAllQuestionsList(&result, keyword)) {
             rsp.set_content(result, "application/json;charset=utf-8");
         } else {
             rsp.set_content("[]", "application/json;charset=utf-8");

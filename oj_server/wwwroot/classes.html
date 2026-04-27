@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>在线OJ</title>
+    <title>灵犀OJ</title>
     <style>
         * {
             margin: 0;
@@ -353,7 +353,7 @@
     <div class="container">
         <div class="navbar">
             <div class="nav-links">
-                <a href="/" style="font-size: 20px; font-weight: bold; color: #20b597;">刷题小站</a>
+                <a href="/" style="font-size: 20px; font-weight: bold; color: #20b597;">灵犀OJ</a>
                 <a href="/all_questions">题库</a>
                 <a href="/leaderboard.html">排行榜</a>
                 <a href="/classes.html" style="color: #8b5cf6; font-weight: bold;">我的班级</a>
@@ -545,6 +545,7 @@
         <div class="scrollable-list" id="q_selector_list">
         </div>
         <div class="modal-actions" style="margin-top: 15px;">
+            <button class="btn btn-outline" onclick="cancelQuestionSelection()">取消</button>
             <button class="btn btn-primary" onclick="confirmQuestionSelection()">确认选中的题目</button>
         </div>
     </div>
@@ -703,13 +704,13 @@
 
                         // 根据角色动态生成操作按钮，不影响原本的进入班级按钮
                         let actionBtn = '';
-if (c.role === 1) { // 如果是老师
-    actionBtn = `<button class="btn btn-danger" onclick="doDeleteClass(${c.id}, '${c.name}')">解散班级</button>`;
-} else { // 如果是学生
-    actionBtn = `<button class="btn btn-warning" onclick="doLeaveClass(${c.id}, '${c.name}')">退出班级</button>`;
-}
+                        if (c.role === 1) { // 如果是老师
+                            actionBtn = `<button class="btn btn-danger" onclick="doDeleteClass(${c.id}, '${c.name}')">解散班级</button>`;
+                        } else { // 如果是学生
+                            actionBtn = `<button class="btn btn-warning" onclick="doLeaveClass(${c.id}, '${c.name}')">退出班级</button>`;
+                        }
 
-html += `<tr>
+                        html += `<tr>
     <td><strong>${c.name}</strong> <span style="color:#999; font-size:0.9em;">(邀请码: ${c.invite_code})</span></td>
     <td>${roleHtml}</td>
     <td>
@@ -728,6 +729,99 @@ html += `<tr>
         // 题目选择器状态管理
         let allQuestionsCache = [];
         let selectedQuestionsMap = {}; // 用字典保存选中的题目 { "1": {title:"A+B", star:"简单"} }
+        let searchTimeout = null;      // 防抖定时器
+        let backupQuestionsMap = {}; // 备份打开弹窗时的状态
+
+        // 打开搜索选择器
+        function openQuestionSelector() {
+            // 打开弹窗前，先“存档”备份当前的已选状态
+            backupQuestionsMap = JSON.parse(JSON.stringify(selectedQuestionsMap));
+
+            document.getElementById('question_select_modal').style.display = 'block';
+            let searchInput = document.getElementById('q_search_input');
+            searchInput.value = ''; // 进入时清空搜索框
+            
+            // 如果缓存里已经有题目了，直接渲染全部题目；没有的话再去后端拉取
+            if (allQuestionsCache.length > 0) {
+                renderSelectorList(''); 
+            } else {
+                loadQuestionList();
+            }
+        }
+
+        // 点击取消时，恢复到“存档”状态
+        function cancelQuestionSelection() {
+            selectedQuestionsMap = JSON.parse(JSON.stringify(backupQuestionsMap));
+            renderSelectedTags(); // 恢复底部标签区原本的显示
+            document.getElementById('question_select_modal').style.display = 'none';
+        }
+
+        // 确认选择
+        function confirmQuestionSelection() {
+            document.getElementById('question_select_modal').style.display = 'none';
+            // 确认时不需额外操作，因为你在勾选时 toggleQSelect 已经实时更新了 selectedQuestionsMap
+        }
+
+        // 搜索输入处理：增加防抖逻辑，避免频繁请求
+        function handleSearchInput(val) {
+            if (searchTimeout) clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                loadQuestionList(val.trim());
+            }, 400); // 用户停止输入 400ms 后再发起网络请求
+        }
+
+        // 加载题目列表逻辑
+        function loadQuestionList() {
+            const listDiv = document.getElementById('q_selector_list');
+            listDiv.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">正在检索题库...</div>';
+
+            fetch('/api/question/list', { headers: { 'Authorization': localStorage.getItem("oj_token") } })
+                .then(res => res.json())
+                .then(data => {
+                    allQuestionsCache = data; // 将拉取到的全部题目存入缓存数组
+                    renderSelectorList('');   // 传入空字符串，触发渲染全部题目
+                });
+        }
+
+        // 渲染题库列表（支持前端纯内存搜索过滤，速度极快）
+        function renderSelectorList(keyword) {
+            const listDiv = document.getElementById('q_selector_list');
+            let html = '';
+            let count = 0;
+            
+            allQuestionsCache.forEach(q => {
+                // 前端模糊匹配：如果有搜索词，且不匹配题号和标题，则跳过不渲染
+                if (keyword && !q.title.includes(keyword) && q.number !== keyword) return;
+
+                let isChecked = selectedQuestionsMap[q.number] ? 'checked' : '';
+                html += `<div class="q-list-item" onclick="toggleQSelect('${q.number}', '${q.title}', '${q.star}', event)">
+                            <input type="checkbox" id="cb_${q.number}" ${isChecked}>
+                            <div style="flex-grow:1; user-select: none;">
+                                <span style="font-weight:bold; margin-right:10px;">${q.number}. ${q.title}</span>
+                                <span style="font-size:12px; color:#666; background:#e2e8f0; padding:3px 8px; border-radius:12px;">${q.star}</span>
+                            </div>
+                         </div>`;
+                count++;
+            });
+            
+            if (count === 0) html = '<div style="padding:20px; text-align:center; color:#999;">没有找到匹配的题目</div>';
+            listDiv.innerHTML = html;
+        }
+
+        // 勾选操作：更新全局缓存，而不是只改 DOM
+        function toggleQSelect(number, title, star, event) {
+            let cb = document.getElementById('cb_' + number);
+            if (event.target.tagName !== 'INPUT') cb.checked = !cb.checked;
+
+            if (cb.checked) {
+                // 加入缓存
+                selectedQuestionsMap[number] = { title: title, star: star };
+            } else {
+                // 移出缓存
+                delete selectedQuestionsMap[number];
+            }
+            renderSelectedTags(); // 更新界面下方的已选标签区
+        }
 
         // 录题前端业务逻辑
         function openAddModal() {
@@ -751,19 +845,7 @@ html += `<tr>
             renderSelectedTags(); // 重置UI
             openModal('publish_modal');
         }
-        // 打开题库选择器并拉取数据
-        function openQuestionSelector() {
-            document.getElementById('question_select_modal').style.display = 'block';
-            const listDiv = document.getElementById('q_selector_list');
-            listDiv.innerHTML = '<div style="padding:30px; text-align:center; color:#666;">📡 正在从服务器拉取题库...</div>';
-
-            fetch('/api/question/list', { headers: { 'Authorization': localStorage.getItem("oj_token") } })
-                .then(res => res.json())
-                .then(data => {
-                    allQuestionsCache = data;
-                    renderSelectorList(''); // 默认无搜索词
-                });
-        }
+        
         // 渲染题库列表（支持搜索过滤）
         function renderSelectorList(keyword) {
             const listDiv = document.getElementById('q_selector_list');
@@ -800,10 +882,6 @@ html += `<tr>
             renderSelectedTags(); // 实时更新背景的标签
         }
 
-        // 关闭选择器
-        function confirmQuestionSelection() {
-            document.getElementById('question_select_modal').style.display = 'none';
-        }
         // 从标签区点 ✖ 移除题目
         function removeSelectedQ(number) {
             delete selectedQuestionsMap[number];
