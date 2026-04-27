@@ -667,11 +667,36 @@
                 <span id="user_info" style="color: #333; font-weight: bold; margin-right: 15px; display: none;"></span>
                 <a href="javascript:void(0);" onclick="logout()" id="logout_btn"
                     style="display: none; color: #ef4444; text-decoration: none; font-weight: 500;">退出</a>
-                <a id="login_btn" href="javascript:void(0);" onclick="openModal()"
+                <a id="login_btn" href="/auth.html" onclick="openModal()"
                     style="padding: 8px 20px; background: #20b597; color: white; border-radius: 20px; text-decoration: none; font-weight: bold;">登录
                     / 注册</a>
             </div>
         </div>
+
+        <script>
+            (function() {
+                let username = localStorage.getItem("oj_username");
+                let token = localStorage.getItem("oj_token");
+                let role = localStorage.getItem("oj_role");
+
+                if (username && token) {
+                    document.getElementById("login_btn").style.display = "none";
+                    
+                    let userInfo = document.getElementById("user_info");
+                    userInfo.innerText = "欢迎，" + username;
+                    userInfo.style.display = "inline-block";
+                    
+                    document.getElementById("logout_btn").style.display = "inline-block";
+
+                    if (role == "1" || role === 1) {
+                        let adminNav = document.getElementById("admin_add_nav");
+                        if (adminNav) adminNav.style.display = "inline-block";
+                    }
+                    let navClasses = document.getElementById("nav_classes");
+                    if (navClasses) navClasses.style.display = "inline-block";
+                }
+            })();
+        </script>
 
         <!-- 左右呈现：题目描述和预设代码 -->
         <div class="part1">
@@ -1135,28 +1160,28 @@
         }
 
         // 页面加载时的状态渲染 (判断是否已登录)
-        window.onload = function () {
-            let username = localStorage.getItem("oj_username");
-            let token = localStorage.getItem("oj_token");
-            let role = localStorage.getItem("oj_role");
+        // window.onload = function () {
+        //     let username = localStorage.getItem("oj_username");
+        //     let token = localStorage.getItem("oj_token");
+        //     let role = localStorage.getItem("oj_role");
 
-            if (username && token) {
-                // 如果已登录，隐藏登录按钮，显示欢迎信息和退出按钮
-                document.getElementById("login_btn").style.display = "none";
-                document.getElementById("user_info").innerText = "欢迎，" + username;
-                document.getElementById("user_info").style.display = "inline-block";
-                document.getElementById("logout_btn").style.display = "inline-block";
+        //     if (username && token) {
+        //         // 如果已登录，隐藏登录按钮，显示欢迎信息和退出按钮
+        //         document.getElementById("login_btn").style.display = "none";
+        //         document.getElementById("user_info").innerText = "欢迎，" + username;
+        //         document.getElementById("user_info").style.display = "inline-block";
+        //         document.getElementById("logout_btn").style.display = "inline-block";
 
-                if (role == "1" || role === 1) {
-                    document.getElementById("admin_add_nav").style.display = "inline-block";
-                }
+        //         if (role == "1" || role === 1) {
+        //             document.getElementById("admin_add_nav").style.display = "inline-block";
+        //         }
 
-                let navClasses = document.getElementById("nav_classes");
-                if (navClasses) {
-                    navClasses.style.display = "inline-block";
-                }
-            }
-        };
+        //         let navClasses = document.getElementById("nav_classes");
+        //         if (navClasses) {
+        //             navClasses.style.display = "inline-block";
+        //         }
+        //     }
+        // };
 
         // 触发登录
         function doLoginAction() {

@@ -243,7 +243,7 @@ namespace ns_control
         }
 
         // 根据题目数据构建网页
-        bool AllQuestions(std::string *html, int user_id = -1, const std::string& star = "")
+        bool AllQuestions(std::string *html, int user_id = -1, const std::string &star = "")
         {
             bool ret = true;
             std::vector<ns_model::Question> all;
@@ -375,14 +375,14 @@ namespace ns_control
                             {
                                 // 只有在没超时、没超内存的情况下，才去判断答案对不对
                                 // 增加对 "WA" 关键字以及全匹配的精准拦截
-                                if (stdout_str.find("Failed") != std::string::npos || 
+                                if (stdout_str.find("Failed") != std::string::npos ||
                                     stdout_str.find("没有通过") != std::string::npos ||
-                                    stdout_str.find("WA") != std::string::npos) 
+                                    stdout_str.find("WA") != std::string::npos)
                                 {
                                     status = -1;
                                     reason = "WA";
                                 }
-                                else if (stdout_str.find("AC") != std::string::npos)
+                                else if (stdout_str.find("AC") != std::string::npos || stdout_str.find("OK") != std::string::npos)
                                 {
                                     status = 0;
                                     reason = "AC";
@@ -504,9 +504,9 @@ namespace ns_control
         }
 
         // 3. 加入班级（匹配你 oj_server.cc 中的调用）
-        bool JoinClass(int user_id, const std::string &join_code)
+        bool JoinClass(int user_id, const std::string &join_code, std::string *reason)
         {
-            return _model.ApplyClass(user_id, join_code);
+            return _model.ApplyClass(user_id, join_code, reason);
         }
 
         // 4. 创建题单及导入题目（匹配你 oj_server.cc 中的调用）
@@ -786,11 +786,22 @@ namespace ns_control
             return _model.DeleteQuestion(number);
         }
 
+        bool RemoveClass(int class_id, int user_id, std::string *reason)
+        {
+            return _model.RemoveClass(class_id, user_id, reason);
+        }
+
+        bool LeaveClass(int class_id, int user_id, std::string *reason)
+        {
+            return _model.QuitClass(class_id, user_id, reason);
+        }
+
         // 获取单个题目详情（返回 JSON，用于编辑时回填数据）
         bool GetQuestionJson(const std::string &number, std::string *out_json)
         {
             ns_model::Question q;
-            if (!_model.GetOneQuestion(number, &q)) return false;
+            if (!_model.GetOneQuestion(number, &q))
+                return false;
 
             Json::Value root;
             root["number"] = q.number;

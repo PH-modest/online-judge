@@ -8,6 +8,9 @@
 #include <sys/time.h>
 #include <atomic>
 #include <fstream>
+#include <random>
+#include <sstream>
+#include <iomanip>
 #include <boost/algorithm/string.hpp>
 
 namespace ns_util
@@ -167,6 +170,62 @@ namespace ns_util
         static void SplitString(const std::string &str, std::vector<std::string> *tokens, const std::string &sep)
         {
             boost::split(*tokens, str, boost::is_any_of(sep), boost::algorithm::token_compress_on);
+        }
+    };
+
+    class AuthUtil
+    {
+    public:
+        // 生成 6 位随机数字验证码
+        static std::string GenerateEmailCode()
+        {
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_int_distribution<> dis(100000, 999999);
+            return std::to_string(dis(gen));
+        }
+
+        // 生成简单的 SVG 图形验证码 
+        static void GenerateCaptcha(std::string &out_svg, std::string &out_text)
+        {
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_int_distribution<> dis(1000, 9999);
+            out_text = std::to_string(dis(gen));
+
+            // 生成带噪点和干扰线的轻量级 SVG
+            std::stringstream svg;
+            svg << "<svg width='100' height='40' xmlns='http://www.w3.org/2000/svg'>"
+                << "<rect width='100' height='40' fill='#f2f2f2'/>"
+                << "<text x='20' y='28' font-family='Arial' font-size='24' fill='#333' font-weight='bold' letter-spacing='5'>"
+                << out_text << "</text>"
+                << "<line x1='0' y1='20' x2='100' y2='15' stroke='#888' stroke-width='2'/>"
+                << "</svg>";
+            out_svg = svg.str();
+        }
+
+        // 3. 使用 Linux curl 命令发送邮件
+        static bool SendEmail(const std::string &to_email, const std::string &code, const std::string &type)
+        {
+            std::string subject = (type == "register") ? "OJ系统注册验证码" : "OJ系统密码重置验证码";
+            std::string body = "您的验证码是: " + code + "，有效期为5分钟。请勿泄露给他人。";
+
+            std::string from_email = "2692602032@qq.com";   
+            std::string auth_code = "cclwpcnuzkqwdfhe";  
+
+            // 使用 \\n 在 C++ 字符串中转义出 \n，交给 shell 的 printf 解释，这是最兼容的写法
+            std::string mail_data = "From: OJ Admin <" + from_email + ">\\n"
+                                    "To: <" + to_email + ">\\n"
+                                    "Subject: " + subject + "\\n\\n" + body;
+
+            // 用 printf 通过管道 | 传给 curl 的 -T - (表示从标准输入读取文件流)
+            std::string cmd = "printf '" + mail_data + "' | curl -s --url 'smtps://smtp.qq.com:465' "
+                              "--ssl-reqd --login-options AUTH=LOGIN "
+                              "--mail-from '" + from_email + "' --mail-rcpt '" + to_email + "' "
+                              "--user '" + from_email + ":" + auth_code + "' -T -";
+
+            int ret = system(cmd.c_str());
+            return ret == 0;
         }
     };
 

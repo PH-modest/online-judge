@@ -276,11 +276,35 @@
                 <span id="user_info" href="/profile.html" style="color: #333; font-weight: bold; margin-right: 15px; display: none;"></span>
                 <a href="javascript:void(0);" onclick="logout()" id="logout_btn"
                     style="display: none; color: #ef4444; text-decoration: none; font-weight: 500;">退出</a>
-                <a id="login_btn" href="javascript:void(0);" onclick="openModal()"
-                    style="padding: 8px 20px; background: #20b597; color: white; border-radius: 20px; text-decoration: none; font-weight: bold;">登录
-                    / 注册</a>
+                <a id="login_btn" href="/auth.html"
+                    style="padding: 8px 20px; background: #20b597; color: white; border-radius: 20px; text-decoration: none; font-weight: bold;">登录 / 注册</a>
             </div>
         </div>
+
+        <script>
+            (function() {
+                let username = localStorage.getItem("oj_username");
+                let token = localStorage.getItem("oj_token");
+                let role = localStorage.getItem("oj_role");
+
+                if (username && token) {
+                    document.getElementById("login_btn").style.display = "none";
+                    
+                    let userInfo = document.getElementById("user_info");
+                    userInfo.innerText = "欢迎，" + username;
+                    userInfo.style.display = "inline-block";
+                    
+                    document.getElementById("logout_btn").style.display = "inline-block";
+
+                    if (role == "1" || role === 1) {
+                        let adminNav = document.getElementById("admin_add_nav");
+                        if (adminNav) adminNav.style.display = "inline-block";
+                    }
+                    let navClasses = document.getElementById("nav_classes");
+                    if (navClasses) navClasses.style.display = "inline-block";
+                }
+            })();
+        </script>
         
         <div class="main-layout">
             <!-- https://api.dicebear.com/7.x/pixel-art/svg?seed=oj-platform -->
@@ -322,48 +346,6 @@
     </div>
 
     <div id="toast_container"></div>
-
-    <div id="modal_overlay" class="modal-overlay" onclick="closeModal()"></div>
-
-    <div id="auth_modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:40px; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,0.2); z-index:1000; width: 360px;">
-        <span onclick="closeModal()" style="position:absolute; top:15px; right:20px; font-size:26px; cursor:pointer; color:#aaa; transition: 0.3s;" onmouseover="this.style.color='#333'" onmouseout="this.style.color='#aaa'">&times;</span>
-
-        <div id="login_view">
-            <h2 style="margin-bottom: 25px; color: #333; text-align: center;">欢迎回来</h2>
-            <div class="form-group">
-                <label>用户名</label>
-                <input type="text" id="login_username" class="modern-input" placeholder="输入用户名">
-            </div>
-            <div class="form-group">
-                <label>密码</label>
-                <input type="password" id="login_password" class="modern-input" placeholder="输入密码">
-            </div>
-            <button onclick="doLoginAction()" class="modern-btn btn-primary" style="margin-top: 10px;">登 录</button>
-            <div class="auth-switch">
-                还没有账号？ <a onclick="switchAuthView('register')">立即免费注册</a>
-            </div>
-        </div>
-
-        <div id="register_view" style="display:none;">
-            <h2 style="margin-bottom: 25px; color: #333; text-align: center;">创建新账号</h2>
-            <div class="form-group">
-                <label>设置用户名</label>
-                <input type="text" id="reg_username" class="modern-input" placeholder="字母或数字">
-            </div>
-            <div class="form-group">
-                <label>设置密码</label>
-                <input type="password" id="reg_password" class="modern-input" placeholder="不少于6位">
-            </div>
-            <div class="form-group">
-                <label>确认密码</label>
-                <input type="password" id="reg_confirm_password" class="modern-input" placeholder="请再次输入密码">
-            </div>
-            <button onclick="doRegisterAction()" class="modern-btn btn-dark" style="margin-top: 10px;">注 册</button>
-            <div class="auth-switch">
-                已有账号？ <a onclick="switchAuthView('login')">返回登录</a>
-            </div>
-        </div>
-    </div>
 
     <div id="add_question_modal" class="modal-large">
         <span onclick="closeAddModal()" style="position:absolute; top:15px; right:20px; font-size:26px; cursor:pointer; color:#aaa; transition: 0.3s;" onmouseover="this.style.color='#333'" onmouseout="this.style.color='#aaa'">&times;</span>
@@ -430,52 +412,6 @@
             }, 3000);
         }
 
-        function openModal() {
-            document.getElementById('modal_overlay').style.display = 'block';
-            document.getElementById('auth_modal').style.display = 'block';
-            switchAuthView('login');
-        }
-
-        function switchAuthView(viewName) {
-            if (viewName === 'login') {
-                document.getElementById('login_view').style.display = 'block';
-                document.getElementById('register_view').style.display = 'none';
-            } else {
-                document.getElementById('login_view').style.display = 'none';
-                document.getElementById('register_view').style.display = 'block';
-            }
-        }
-
-        function closeModal() {
-            document.getElementById('modal_overlay').style.display = 'none';
-            document.getElementById('auth_modal').style.display = 'none';
-            document.getElementById('login_username').value = '';
-            document.getElementById('login_password').value = '';
-            document.getElementById('reg_username').value = '';
-            document.getElementById('reg_password').value = '';
-            document.getElementById('reg_confirm_password').value = '';
-        }
-
-        function login(username, password) {
-            fetch('/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: username, password: password })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 0) {
-                        showToast("登录成功！", "success");
-                        localStorage.setItem("oj_token", data.token);
-                        localStorage.setItem("oj_role", data.role);
-                        localStorage.setItem("oj_username", username);
-                        setTimeout(() => { location.reload(); }, 1000);
-                    } else {
-                        showToast("登录失败：" + data.reason, "error");
-                    }
-                });
-        }
-
         function logout() {
             localStorage.removeItem("oj_token");
             localStorage.removeItem("oj_role");
@@ -484,55 +420,24 @@
             setTimeout(() => { location.reload(); }, 1000);
         }
 
-        window.onload = function () {
-            let username = localStorage.getItem("oj_username");
-            let token = localStorage.getItem("oj_token");
-            let role = localStorage.getItem("oj_role");
+        // window.onload = function () {
+        //     let username = localStorage.getItem("oj_username");
+        //     let token = localStorage.getItem("oj_token");
+        //     let role = localStorage.getItem("oj_role");
 
-            if (username && token) {
-                document.getElementById("login_btn").style.display = "none";
-                document.getElementById("user_info").innerText = "欢迎，" + username;
-                document.getElementById("user_info").style.display = "inline-block";
-                document.getElementById("logout_btn").style.display = "inline-block";
+        //     if (username && token) {
+        //         document.getElementById("login_btn").style.display = "none";
+        //         document.getElementById("user_info").innerText = "欢迎，" + username;
+        //         document.getElementById("user_info").style.display = "inline-block";
+        //         document.getElementById("logout_btn").style.display = "inline-block";
 
-                if (role == "1" || role === 1) {
-                    document.getElementById("admin_add_nav").style.display = "inline-block";
-                }
-                let navClasses = document.getElementById("nav_classes");
-                if (navClasses) { navClasses.style.display = "inline-block"; }
-            }
-        };
-
-        function doLoginAction() {
-            let u = document.getElementById("login_username").value;
-            let p = document.getElementById("login_password").value;
-            if (!u || !p) { showToast("账号或密码不能为空！", "warning"); return; }
-            login(u, p);
-        }
-
-        function doRegisterAction() {
-            let u = document.getElementById("reg_username").value;
-            let p = document.getElementById("reg_password").value;
-            let cp = document.getElementById("reg_confirm_password").value;
-
-            if (!u || !p || !cp) { showToast("请完整填写所有注册信息！", "warning"); return; }
-            if (p !== cp) { showToast("两次输入的密码不一致，请重新输入！", "error"); return; }
-
-            fetch('/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: u, password: p })
-            }).then(response => response.json()).then(data => {
-                    if (data.status === 0) {
-                        showToast("注册成功！已为您切换至登录界面。", "success");
-                        switchAuthView('login');
-                        document.getElementById('login_username').value = u;
-                        document.getElementById('login_password').value = ''; 
-                    } else {
-                        showToast("注册失败：" + data.reason, "error");
-                    }
-                });
-        }
+        //         if (role == "1" || role === 1) {
+        //             document.getElementById("admin_add_nav").style.display = "inline-block";
+        //         }
+        //         let navClasses = document.getElementById("nav_classes");
+        //         if (navClasses) { navClasses.style.display = "inline-block"; }
+        //     }
+        // };
 
         function openAddModal() {
             document.getElementById('modal_overlay').style.display = 'block';

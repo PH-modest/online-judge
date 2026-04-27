@@ -1,6 +1,8 @@
 #include <iostream>
 #include <signal.h>
 #include <jsoncpp/json/json.h>
+#include <unordered_map>
+#include <mutex>
 #include "../comm/log.hpp"
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 #include "../comm/httplib.h"
@@ -10,6 +12,9 @@
 
 using namespace httplib;
 using namespace ns_log;
+
+static std::unordered_map<std::string, std::string> g_captcha_session;
+static std::mutex g_captcha_mutex;
 
 static ns_control::Control *ctrl_ptr = nullptr;
 
@@ -43,21 +48,66 @@ int main()
         Json::Reader reader;
         Json::Value req_json;
         Json::Value rsp_json;
+        Json::FastWriter writer;
         
         if(reader.parse(req.body, req_json)) 
         {
             std::string username = req_json["username"].asString();
             std::string password = req_json["password"].asString();
-            
-            if(user_model.Register(username, password)) {
-                rsp_json["status"] = 0;
-                rsp_json["reason"] = "注册成功";
-            } else {
+            std::string email = req_json["email"].asString();
+            std::string code = req_json["email_code"].asString();
+
+            if(!user_model.CheckAuthCode(email,code,"register"))
+            {
                 rsp_json["status"] = -1;
-                rsp_json["reason"] = "注册失败，用户名可能已存在";
+                rsp_json["reason"] = "邮箱验证码错误或已过期";
+            }
+            else
+            {
+                if(user_model.RegisterWithEmail(username, password, email)) 
+                {
+                    rsp_json["status"] = 0;
+                    rsp_json["reason"] = "注册成功";
+                } 
+                else 
+                {
+                    rsp_json["status"] = -1;
+                    rsp_json["reason"] = "注册失败，用户名或邮箱已存在";
+                }
+            }  
+        }
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); });
+
+    // 重置密码接口
+    svr.Post("/api/reset_password", [&user_model](const Request &req, Response &rsp)
+             {
+        Json::Reader reader;
+        Json::Value req_json, rsp_json;
+        Json::FastWriter writer;
+        
+        if(reader.parse(req.body, req_json)) 
+        {
+            std::string email = req_json["email"].asString();
+            std::string new_password = req_json["password"].asString();
+            std::string code = req_json["email_code"].asString();
+            
+            // 校验验证码类型为 "reset"
+            if (!user_model.CheckAuthCode(email, code, "reset"))
+            {
+                rsp_json["status"] = -1;
+                rsp_json["reason"] = "邮箱验证码错误或已过期";
+            }
+            else
+            {
+                if (user_model.UpdatePasswordByEmail(email, new_password)) {
+                    rsp_json["status"] = 0;
+                    rsp_json["reason"] = "密码重置成功";
+                } else {
+                    rsp_json["status"] = -1;
+                    rsp_json["reason"] = "重置失败，该邮箱未注册";
+                }
             }
         }
-        Json::FastWriter writer;
         rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); });
 
     // 用户登录接口
@@ -343,67 +393,67 @@ int main()
     // ================= 班级管理功能接口 =================
 
     // 1. 创建班级
-    svr.Post("/class/create", [&ctrl](const Request &req, Response &rsp)
-             {
-        Json::Value rsp_json;
-        Json::FastWriter writer;
+    // svr.Post("/class/create", [&ctrl](const Request &req, Response &rsp)
+    //          {
+    //     Json::Value rsp_json;
+    //     Json::FastWriter writer;
 
-        if (!req.has_header("Authorization")) {
-            rsp_json["status"] = -2; rsp_json["reason"] = "未登录，无法创建班级！";
-            rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); return;
-        }
+    //     if (!req.has_header("Authorization")) {
+    //         rsp_json["status"] = -2; rsp_json["reason"] = "未登录，无法创建班级！";
+    //         rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); return;
+    //     }
 
-        std::string token = req.get_header_value("Authorization");
-        int user_id = 0, role = 0; std::string username = "";
-        if (!ns_util::JwtUtil::VerifyToken(token, &user_id, &username, &role)) {
-            rsp_json["status"] = -2; rsp_json["reason"] = "凭证无效或过期！";
-            rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); return;
-        }
+    //     std::string token = req.get_header_value("Authorization");
+    //     int user_id = 0, role = 0; std::string username = "";
+    //     if (!ns_util::JwtUtil::VerifyToken(token, &user_id, &username, &role)) {
+    //         rsp_json["status"] = -2; rsp_json["reason"] = "凭证无效或过期！";
+    //         rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); return;
+    //     }
 
-        Json::Reader reader;
-        Json::Value req_json;
-        if (reader.parse(req.body, req_json)) {
-            std::string name = req_json["name"].asString();
-            std::string join_code;
-            if (ctrl.CreateClass(user_id, name, &join_code)) {
-                rsp_json["status"] = 0; 
-                rsp_json["reason"] = "创建成功"; 
-                rsp_json["join_code"] = join_code; // 返回邀请码供前端展示
-            } else {
-                rsp_json["status"] = -1; 
-                rsp_json["reason"] = "创建失败，数据库异常";
-            }
-        }
-        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); });
+    //     Json::Reader reader;
+    //     Json::Value req_json;
+    //     if (reader.parse(req.body, req_json)) {
+    //         std::string name = req_json["name"].asString();
+    //         std::string join_code;
+    //         if (ctrl.CreateClass(user_id, name, &join_code)) {
+    //             rsp_json["status"] = 0;
+    //             rsp_json["reason"] = "创建成功";
+    //             rsp_json["join_code"] = join_code; // 返回邀请码供前端展示
+    //         } else {
+    //             rsp_json["status"] = -1;
+    //             rsp_json["reason"] = "创建失败，数据库异常";
+    //         }
+    //     }
+    //     rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); });
 
     // 2. 加入班级
-    svr.Post("/class/join", [&ctrl](const Request &req, Response &rsp)
-             {
-        Json::Value rsp_json;
-        Json::FastWriter writer;
-        if (!req.has_header("Authorization")) {
-            rsp_json["status"] = -2; rsp_json["reason"] = "未登录！";
-            rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); return;
-        }
+    // svr.Post("/class/join", [&ctrl](const Request &req, Response &rsp)
+    //          {
+    //     Json::Value rsp_json;
+    //     Json::FastWriter writer;
+    //     if (!req.has_header("Authorization")) {
+    //         rsp_json["status"] = -2; rsp_json["reason"] = "未登录！";
+    //         rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); return;
+    //     }
 
-        std::string token = req.get_header_value("Authorization");
-        int user_id = 0, role = 0; std::string username = "";
-        if (!ns_util::JwtUtil::VerifyToken(token, &user_id, &username, &role)) {
-            rsp_json["status"] = -2; rsp_json["reason"] = "凭证无效！";
-            rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); return;
-        }
+    //     std::string token = req.get_header_value("Authorization");
+    //     int user_id = 0, role = 0; std::string username = "";
+    //     if (!ns_util::JwtUtil::VerifyToken(token, &user_id, &username, &role)) {
+    //         rsp_json["status"] = -2; rsp_json["reason"] = "凭证无效！";
+    //         rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); return;
+    //     }
 
-        Json::Reader reader;
-        Json::Value req_json;
-        if (reader.parse(req.body, req_json)) {
-            std::string join_code = req_json["join_code"].asString();
-            if (ctrl.JoinClass(user_id, join_code)) {
-                rsp_json["status"] = 0; rsp_json["reason"] = "成功加入班级！";
-            } else {
-                rsp_json["status"] = -1; rsp_json["reason"] = "加入失败，邀请码不存在或系统异常";
-            }
-        }
-        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); });
+    //     Json::Reader reader;
+    //     Json::Value req_json;
+    //     if (reader.parse(req.body, req_json)) {
+    //         std::string join_code = req_json["join_code"].asString();
+    //         if (ctrl.JoinClass(user_id, join_code)) {
+    //             rsp_json["status"] = 0; rsp_json["reason"] = "成功加入班级！";
+    //         } else {
+    //             rsp_json["status"] = -1; rsp_json["reason"] = "加入失败，邀请码不存在或系统异常";
+    //         }
+    //     }
+    //     rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); });
 
     // 3. 发布题单（包含录入新题或从题库导入）
     svr.Post("/class/problem_set/create", [&ctrl](const Request &req, Response &rsp)
@@ -563,38 +613,43 @@ int main()
     // 申请加入班级
     svr.Post("/api/class/join", [&ctrl](const Request &req, Response &rsp)
              {
-        Json::Reader reader;
-        Json::Value req_json;
         Json::Value rsp_json;
         Json::FastWriter writer;
 
-        // 1. 鉴权
+        // 1. 严格鉴权
         if (!req.has_header("Authorization")) {
             rsp_json["status"] = -2;
             rsp_json["reason"] = "未登录，请先登录";
             rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
             return;
         }
+        
         std::string token = req.get_header_value("Authorization");
         int user_id = 0, role = 0; std::string username = "";
         if (!ns_util::JwtUtil::VerifyToken(token, &user_id, &username, &role)) {
             rsp_json["status"] = -2;
-            rsp_json["reason"] = "登录失效";
+            rsp_json["reason"] = "登录失效，请重新登录";
             rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
             return;
         }
 
-        // 2. 解析邀请码
+        // 2. 业务处理
+        Json::Reader reader;
+        Json::Value req_json;
         if (reader.parse(req.body, req_json)) {
             std::string join_code = req_json["join_code"].asString();
-            // 调用之前在 Control 封装的 JoinClass 逻辑
-            if (ctrl.JoinClass(user_id, join_code)) {
+            std::string reason; 
+            
+            if (ctrl.JoinClass(user_id, join_code, &reason)) {
                 rsp_json["status"] = 0;
-                rsp_json["reason"] = "申请成功！请等待班级创建者审核。";
+                rsp_json["reason"] = reason;
             } else {
                 rsp_json["status"] = -1;
-                rsp_json["reason"] = "加入失败，请检查邀请码是否正确或是否已在班级中";
+                rsp_json["reason"] = reason; // 这里由 model 层设置的友好提示
             }
+        } else {
+            rsp_json["status"] = -1;
+            rsp_json["reason"] = "数据格式错误";
         }
         rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); });
 
@@ -876,6 +931,124 @@ int main()
             std::string err_str = std::to_string(static_cast<int>(res.error()));
             rsp_json["status"] = -1;
             rsp_json["reason"] = "请求AI网络异常，底层错误原因：" + err_str;
+        }
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); });
+
+    // 获取图形验证码接口
+    svr.Get("/api/captcha", [](const Request &req, Response &rsp)
+            {
+        std::string svg, text;
+        ns_util::AuthUtil::GenerateCaptcha(svg, text);
+        std::string session_id = ns_util::AuthUtil::GenerateEmailCode(); // 借用随机数做唯一ID
+
+        {
+            std::lock_guard<std::mutex> lock(g_captcha_mutex);
+            g_captcha_session[session_id] = text;
+        }
+
+        Json::Value rsp_json;
+        rsp_json["session_id"] = session_id;
+        rsp_json["svg"] = svg;
+        Json::FastWriter writer;
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); });
+
+    // 发送邮件验证码接口
+    svr.Post("/api/send_code", [&user_model](const Request &req, Response &rsp)
+             {
+        Json::Reader reader;
+        Json::Value req_json, rsp_json;
+        Json::FastWriter writer;
+
+        if (reader.parse(req.body, req_json))
+        {
+            std::string email = req_json["email"].asString();
+            std::string type = req_json["type"].asString(); // "register" 或 "reset"
+            std::string captcha_code = req_json["captcha_code"].asString();
+            std::string session_id = req_json["session_id"].asString();
+
+            bool captcha_valid = false;
+            {
+                std::lock_guard<std::mutex> lock(g_captcha_mutex);
+                if (g_captcha_session.count(session_id) && g_captcha_session[session_id] == captcha_code)
+                {
+                    captcha_valid = true;
+                    g_captcha_session.erase(session_id); // 验证一次即失效，防止暴力破解
+                }
+            }
+
+            if (!captcha_valid)
+            {
+                rsp_json["status"] = -1;
+                rsp_json["reason"] = "图形验证码错误或已失效";
+                rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+                return;
+            }
+
+            std::string email_code = ns_util::AuthUtil::GenerateEmailCode();
+            if (user_model.RecordAuthCode(email, email_code, type))
+            {
+                if (ns_util::AuthUtil::SendEmail(email, email_code, type))
+                {
+                    rsp_json["status"] = 0;
+                    rsp_json["reason"] = "验证码发送成功";
+                }
+                else
+                {
+                    rsp_json["status"] = -1;
+                    rsp_json["reason"] = "邮件发送失败，请检查服务器网络或SMTP配置";
+                }
+            }
+            else
+            {
+                rsp_json["status"] = -1;
+                rsp_json["reason"] = "验证码入库异常";
+            }
+        }
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); });
+
+    // 删除班级
+    svr.Post("/api/class/delete", [&ctrl](const Request &req, Response &rsp)
+             {
+        Json::Value rsp_json; Json::FastWriter writer;
+        std::string token = req.get_header_value("Authorization");
+        int u_id = 0, role = 0; std::string uname = "";
+        if (!ns_util::JwtUtil::VerifyToken(token, &u_id, &uname, &role)) {
+            rsp_json["status"] = -2; rsp.set_content(writer.write(rsp_json), "application/json"); return;
+        }
+
+        Json::Reader reader; Json::Value req_json;
+        if (reader.parse(req.body, req_json)) {
+            int class_id = req_json["class_id"].asInt();
+            std::string reason;
+            if (ctrl.RemoveClass(class_id, u_id, &reason)) {
+                rsp_json["status"] = 0;
+            } else {
+                rsp_json["status"] = -1;
+            }
+            rsp_json["reason"] = reason;
+        }
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); });
+
+    // 退出班级
+    svr.Post("/api/class/leave", [&ctrl](const Request &req, Response &rsp)
+             {
+        Json::Value rsp_json; Json::FastWriter writer;
+        std::string token = req.get_header_value("Authorization");
+        int u_id = 0, role = 0; std::string uname = "";
+        if (!ns_util::JwtUtil::VerifyToken(token, &u_id, &uname, &role)) {
+            rsp_json["status"] = -2; rsp.set_content(writer.write(rsp_json), "application/json"); return;
+        }
+
+        Json::Reader reader; Json::Value req_json;
+        if (reader.parse(req.body, req_json)) {
+            int class_id = req_json["class_id"].asInt();
+            std::string reason;
+            if (ctrl.LeaveClass(class_id, u_id, &reason)) {
+                rsp_json["status"] = 0;
+            } else {
+                rsp_json["status"] = -1;
+            }
+            rsp_json["reason"] = reason;
         }
         rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); });
 
