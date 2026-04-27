@@ -75,6 +75,18 @@
             background-color: #20b597;
         }
 
+        .btn-danger {
+            background-color: #ef4444 !important;
+            color: white;
+            margin-left: 8px;
+        }
+
+        .btn-warning {
+            background-color: #f59e0b !important;
+            color: white;
+            margin-left: 8px;
+        }
+
         .btn-primary:hover {
             background-color: #1aa085;
         }
@@ -345,16 +357,41 @@
                 <a href="/all_questions">题库</a>
                 <a href="/leaderboard.html">排行榜</a>
                 <a href="/classes.html" style="color: #8b5cf6; font-weight: bold;">我的班级</a>
-                <a href="javascript:void(0);" id="admin_add_nav" onclick="window.location.href='/all_questions'" 
+                <a href="javascript:void(0);" id="admin_add_nav" onclick="window.location.href='/all_questions'"
                     style="display: none; color: #f59e0b; font-weight: bold;">录入题目</a>
             </div>
-            
+
             <div>
                 <span id="user_info" style="color: #333; font-weight: bold; margin-right: 15px; display: none;"></span>
                 <a href="javascript:void(0);" onclick="logout()" id="logout_btn"
                     style="display: none; color: #ef4444; text-decoration: none; font-weight: 500;">退出</a>
             </div>
         </div>
+
+        <script>
+            (function () {
+                let username = localStorage.getItem("oj_username");
+                let token = localStorage.getItem("oj_token");
+                let role = localStorage.getItem("oj_role");
+
+                if (username && token) {
+                    document.getElementById("login_btn").style.display = "none";
+
+                    let userInfo = document.getElementById("user_info");
+                    userInfo.innerText = "欢迎，" + username;
+                    userInfo.style.display = "inline-block";
+
+                    document.getElementById("logout_btn").style.display = "inline-block";
+
+                    if (role == "1" || role === 1) {
+                        let adminNav = document.getElementById("admin_add_nav");
+                        if (adminNav) adminNav.style.display = "inline-block";
+                    }
+                    let navClasses = document.getElementById("nav_classes");
+                    if (navClasses) navClasses.style.display = "inline-block";
+                }
+            })();
+        </script>
 
         <div class="content-area">
             <div id="view_class_list">
@@ -536,7 +573,7 @@
             var username = localStorage.getItem("oj_username");
             var token = localStorage.getItem("oj_token");
             var role = localStorage.getItem("oj_role");
-            
+
             if (username && token) {
                 // 1. 渲染文字和退出按钮 (和做题页保持一致的逻辑)
                 document.getElementById("user_info").innerText = "欢迎，" + username;
@@ -555,6 +592,93 @@
         function switchView(viewId) { document.getElementById('view_class_list').style.display = 'none'; document.getElementById('view_class_dashboard').style.display = 'none'; document.getElementById('view_assignment_detail').style.display = 'none'; document.getElementById(viewId).style.display = 'block'; }
         function openModal(modalId) { document.getElementById('modal_overlay').style.display = 'block'; document.getElementById(modalId).style.display = 'block'; }
         function closeAllModals() { document.getElementById('modal_overlay').style.display = 'none'; document.querySelectorAll('.custom-modal').forEach(m => m.style.display = 'none'); }
+
+        // 1. 新增这个封装函数
+        function fetchMyClasses() {
+            const token = localStorage.getItem("oj_token");
+            if (!token) return;
+
+            fetch('/api/class/list', {
+                headers: { 'Authorization': token }
+            })
+                .then(res => res.json())
+                .then(data => {
+                    const tbody = document.getElementById('class_list_body');
+                    let html = '';
+                    if (data.length === 0) {
+                        html = '<tr><td colspan="5" style="text-align:center; color:#999;">暂无班级</td></tr>';
+                    } else {
+                        data.forEach(c => {
+                            // 【核心逻辑】：根据角色判断显示哪个按钮
+                            let actionBtn = '';
+                            if (c.role === 1) { // 老师/创建者
+                                actionBtn = `<button class="btn btn-danger" onclick="doDeleteClass(${c.id}, '${c.name}')">解散班级</button>`;
+                            } else { // 学生/成员
+                                actionBtn = `<button class="btn btn-warning" onclick="doLeaveClass(${c.id}, '${c.name}')">退出班级</button>`;
+                            }
+
+                            html += `<tr>
+                    <td>${c.id}</td>
+                    <td><strong style="color:#20b597;">${c.name}</strong></td>
+                    <td><code>${c.invite_code}</code></td>
+                    <td>${c.role === 1 ? '<span style="color:#8b5cf6;">教师</span>' : '学生'}</td>
+                    <td>
+                        <button class="btn btn-primary" onclick="location.href='/class_detail.html?id=${c.id}'">进入</button>
+                        ${actionBtn}
+                    </td>
+                </tr>`;
+                        });
+                    }
+                    tbody.innerHTML = html;
+                });
+        }
+
+        // 2. 新增删除与退出的交互逻辑
+        function doDeleteClass(classId, className) {
+            if (!confirm(`⚠️ 警告：确定要彻底解散班级【${className}】吗？\n该操作不可撤销，班级成员和题单都将被清除！`)) return;
+
+            fetch('/api/class/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': localStorage.getItem("oj_token")
+                },
+                body: JSON.stringify({ class_id: classId })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 0) {
+                        showToast("班级已成功解散", "success");
+                        loadMyClasses(); // 成功后刷新当前列表，不会影响其他页面
+                    } else {
+                        showToast(data.reason || "删除失败", "error");
+                    }
+                });
+        }
+
+        // 【新增】退出班级 (学生操作)
+        function doLeaveClass(classId, className) {
+            if (!confirm(`确定要退出班级【${className}】吗？`)) return;
+
+            fetch('/api/class/leave', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': localStorage.getItem("oj_token")
+                },
+                body: JSON.stringify({ class_id: classId })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 0) {
+                        showToast("已成功退出该班级", "success");
+                        loadMyClasses(); // 成功后刷新当前列表
+                    } else {
+                        showToast(data.reason || "退出失败", "error");
+                    }
+                });
+        }
+
         window.onload = function () {
             if (!localStorage.getItem("oj_token")) {
                 alert("请先登录！");
@@ -576,7 +700,25 @@
                 else {
                     data.forEach(c => {
                         let roleHtml = c.role === 1 ? '<span style="color:#f59e0b;font-weight:bold;">教师/管理员</span>' : '<span style="color:#20b597;font-weight:bold;">学生</span>';
-                        html += `<tr><td><strong>${c.name}</strong> <span style="color:#999; font-size:0.9em;">(邀请码: ${c.invite_code})</span></td><td>${roleHtml}</td><td><button class="btn btn-primary" onclick="enterClassDashboard(${c.id}, '${c.name}', ${c.role})">进入班级</button></td></tr>`;
+
+                        // 根据角色动态生成操作按钮，不影响原本的进入班级按钮
+                        let actionBtn = '';
+if (c.role === 1) { // 如果是老师
+    actionBtn = `<button class="btn btn-danger" onclick="doDeleteClass(${c.id}, '${c.name}')">解散班级</button>`;
+} else { // 如果是学生
+    actionBtn = `<button class="btn btn-warning" onclick="doLeaveClass(${c.id}, '${c.name}')">退出班级</button>`;
+}
+
+html += `<tr>
+    <td><strong>${c.name}</strong> <span style="color:#999; font-size:0.9em;">(邀请码: ${c.invite_code})</span></td>
+    <td>${roleHtml}</td>
+    <td>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <button class="btn btn-primary" onclick="enterClassDashboard(${c.id}, '${c.name}', ${c.role})">进入班级</button>
+            ${actionBtn}
+        </div>
+    </td>
+</tr>`;
                     });
                 }
                 tbody.innerHTML = html;

@@ -460,27 +460,32 @@ namespace ns_model
             return res == 0;
         }
 
-        // 2. 申请加入班级
-        bool ApplyClass(int user_id, const std::string &invite_code)
+        // 2. 申请加入班级 
+        bool ApplyClass(int user_id, const std::string &invite_code, std::string *out_reason)
         {
             MYSQL *my = mysql_init(nullptr);
-            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0))
+            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0)) {
+                // 后端记录真实连接失败原因，前端模糊提示
+                LOG(WARNING) << "数据库连接失败: " << mysql_error(my) << "\n";
+                *out_reason = "系统繁忙，连接数据库异常，请稍后再试。";
                 return false;
+            }
             mysql_set_character_set(my, "utf8");
 
-            // 先通过邀请码查出 class_id
+            // 1. 通过邀请码查 class_id
             std::string sql1 = "SELECT id FROM oj_classes WHERE invite_code = '" + invite_code + "'";
-            if (0 != mysql_query(my, sql1.c_str()))
-            {
+            if (0 != mysql_query(my, sql1.c_str())) {
+                // 查询班级异常的后台记录
+                LOG(WARNING) << "查询班级失败: " << mysql_error(my) << " SQL: " << sql1 << "\n";
+                *out_reason = "查询班级异常，请联系管理员。";
                 mysql_close(my);
                 return false;
             }
 
             MYSQL_RES *res = mysql_store_result(my);
-            if (!res || mysql_num_rows(res) == 0)
-            {
-                if (res)
-                    mysql_free_result(res);
+            if (!res || mysql_num_rows(res) == 0) {
+                if (res) mysql_free_result(res);
+                *out_reason = "加入失败，该班级邀请码不存在。";
                 mysql_close(my);
                 return false;
             }
@@ -488,12 +493,36 @@ namespace ns_model
             std::string class_id = row[0];
             mysql_free_result(res);
 
-            // 插入申请记录 (status 默认为 0)
-            std::string sql2 = "INSERT IGNORE INTO oj_class_members (class_id, user_id, status) VALUES (" + class_id + ", " + std::to_string(user_id) + ", 0)";
-            int result = mysql_query(my, sql2.c_str());
+            // 2. 提前检查是否已经在班级中
+            std::string check_sql = "SELECT status FROM oj_class_members WHERE class_id = " + class_id + " AND user_id = " + std::to_string(user_id);
+            if (0 == mysql_query(my, check_sql.c_str())) {
+                MYSQL_RES *check_res = mysql_store_result(my);
+                if (check_res && mysql_num_rows(check_res) > 0) {
+                    MYSQL_ROW check_row = mysql_fetch_row(check_res);
+                    int status = atoi(check_row[0]);
+                    mysql_free_result(check_res);
+                    mysql_close(my);
+                    
+                    if (status == 1) *out_reason = "您已经是该班级成员，无需重复申请！";
+                    else *out_reason = "您已提交过申请，正在等待老师审核！";
+                    return false;
+                }
+                if (check_res) mysql_free_result(check_res);
+            }
 
+            // 3. 正式插入申请记录
+            std::string sql2 = "INSERT INTO oj_class_members (class_id, user_id, status) VALUES (" + class_id + ", " + std::to_string(user_id) + ", 0)";
+            if (0 != mysql_query(my, sql2.c_str())) {
+                LOG(WARNING) << "用户ID [" << user_id << "] 申请加入班级ID [" << class_id << "] 失败, MySQL真实报错: " << mysql_error(my) << "\n";
+                
+                *out_reason = "系统繁忙，提交申请失败，请稍后再试。";
+                mysql_close(my);
+                return false;
+            }
+
+            *out_reason = "申请成功！请等待班级老师审核。";
             mysql_close(my);
-            return result == 0;
+            return true;
         }
 
         // 3. 发布题单
@@ -942,6 +971,90 @@ namespace ns_model
             
             mysql_close(my);
             return res == 0;
+        }
+
+        // 删除班级 (仅创建者有权，且清理所有关联表)
+        bool RemoveClass(int class_id, int user_id, std::string *out_reason)
+        {
+            MYSQL *my = mysql_init(nullptr);
+            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0)) {
+                LOG(WARNING) << "数据库连接失败\n";
+                *out_reason = "系统繁忙，请稍后再试。";
+                return false;
+            }
+            mysql_set_character_set(my, "utf8");
+
+            // 1. 权限校验：确保当前用户是该班级的创建者
+            std::string check_sql = "SELECT creator_id FROM oj_classes WHERE id = " + std::to_string(class_id);
+            mysql_query(my, check_sql.c_str());
+            MYSQL_RES *res = mysql_store_result(my);
+            if (!res || mysql_num_rows(res) == 0) {
+                if (res) mysql_free_result(res);
+                *out_reason = "班级不存在。";
+                mysql_close(my); return false;
+            }
+            int creator_id = atoi(mysql_fetch_row(res)[0]);
+            mysql_free_result(res);
+
+            if (creator_id != user_id) {
+                *out_reason = "无权删除：您不是该班级的创建者。";
+                mysql_close(my); return false;
+            }
+
+            // 2. 清理关联表 (级联删除)
+            // 先删题单关联的题目，再删题单，再删成员，最后删班级
+            std::string del_aq = "DELETE FROM oj_assignment_questions WHERE assignment_id IN (SELECT id FROM oj_assignments WHERE class_id = " + std::to_string(class_id) + ")";
+            std::string del_a  = "DELETE FROM oj_assignments WHERE class_id = " + std::to_string(class_id);
+            std::string del_m  = "DELETE FROM oj_class_members WHERE class_id = " + std::to_string(class_id);
+            std::string del_c  = "DELETE FROM oj_classes WHERE id = " + std::to_string(class_id);
+
+            mysql_query(my, del_aq.c_str());
+            mysql_query(my, del_a.c_str());
+            mysql_query(my, del_m.c_str());
+            int ret = mysql_query(my, del_c.c_str());
+
+            if (ret != 0) {
+                LOG(ERROR) << "删除班级失败: " << mysql_error(my) << "\n";
+                *out_reason = "数据库执行删除异常。";
+                mysql_close(my); return false;
+            }
+
+            *out_reason = "班级已成功解散。";
+            mysql_close(my);
+            return true;
+        }
+
+        // 退出班级
+        bool QuitClass(int class_id, int user_id, std::string *out_reason)
+        {
+            MYSQL *my = mysql_init(nullptr);
+            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0)) return false;
+            
+            // 不能退出自己创建的班级（老师必须解散班级）
+            std::string check_sql = "SELECT creator_id FROM oj_classes WHERE id = " + std::to_string(class_id);
+            mysql_query(my, check_sql.c_str());
+            MYSQL_RES *res = mysql_store_result(my);
+            if (res && mysql_num_rows(res) > 0) {
+                int creator_id = atoi(mysql_fetch_row(res)[0]);
+                mysql_free_result(res);
+                if (creator_id == user_id) {
+                    *out_reason = "创建者无法直接退出班级，请选择删除班级。";
+                    mysql_close(my); return false;
+                }
+            } else if (res) {
+                mysql_free_result(res);
+            }
+
+            std::string sql = "DELETE FROM oj_class_members WHERE class_id = " + std::to_string(class_id) + " AND user_id = " + std::to_string(user_id);
+            int ret = mysql_query(my, sql.c_str());
+            
+            if (ret == 0) {
+                *out_reason = "已成功退出该班级。";
+            } else {
+                *out_reason = "操作失败。";
+            }
+            mysql_close(my);
+            return ret == 0;
         }
 
         ~Model()

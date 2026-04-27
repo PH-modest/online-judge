@@ -154,6 +154,69 @@ namespace ns_model
             return true;
         }
 
+        // 写入邮箱验证码
+        bool RecordAuthCode(const std::string &email, const std::string &code, const std::string &type)
+        {
+            std::string del_sql = "DELETE FROM oj_auth_codes WHERE email='" + email + "' AND type='" + type + "'";
+            mysql_query(_conn, del_sql.c_str()); // 删除旧的同类型验证码
+
+            std::string ins_sql = "INSERT INTO oj_auth_codes (email, code, type, expire_time) VALUES ('" +
+                                  email + "', '" + code + "', '" + type + "', DATE_ADD(NOW(), INTERVAL 5 MINUTE))";
+
+            if (mysql_query(_conn, ins_sql.c_str()) != 0)
+            {
+                LOG(WARNING) << "写入验证码记录失败: " << mysql_error(_conn) << "\n";
+                return false;
+            }
+            return true;
+        }
+
+        // 校验验证码是否匹配且未过期
+        bool CheckAuthCode(const std::string &email, const std::string &code, const std::string &type)
+        {
+            std::string sql = "SELECT id FROM oj_auth_codes WHERE email='" + email +
+                              "' AND code='" + code +
+                              "' AND type='" + type +
+                              "' AND expire_time > NOW()";
+
+            if (mysql_query(_conn, sql.c_str()) != 0) return false;
+
+            MYSQL_RES *res = mysql_store_result(_conn);
+            if (res == nullptr) return false;
+
+            int num_rows = mysql_num_rows(res);
+            mysql_free_result(res);
+            return num_rows > 0;
+        }
+
+        // 找回密码：通过邮箱更新密码
+        bool UpdatePasswordByEmail(const std::string &email, const std::string &new_password)
+        {
+            std::string sql = "UPDATE oj_users SET password='" + new_password + "' WHERE email='" + email + "'";
+            if (mysql_query(_conn, sql.c_str()) != 0)
+            {
+                LOG(WARNING) << "重置密码失败: " << mysql_error(_conn) << "\n";
+                return false;
+            }
+            // 确保真的有行被更新（即邮箱确实存在于系统中）
+            return mysql_affected_rows(_conn) > 0;
+        }
+
+        // 重载带邮箱的注册方法
+        bool RegisterWithEmail(const std::string &username, const std::string &password, const std::string &email)
+        {
+            std::string sql = "INSERT INTO oj_users (username, password, email, role) VALUES ('" +
+                              username + "', '" + password + "', '" + email + "', 0)";
+
+            if (mysql_query(_conn, sql.c_str()) != 0)
+            {
+                LOG(WARNING) << "用户注册失败 (用户名或邮箱已存在):" << mysql_error(_conn) << "\n";
+                return false;
+            }
+            LOG(INFO) << "新用户注册成功: " << username << " 邮箱: " << email << "\n";
+            return true;
+        }
+
     private:
         MYSQL *_conn;
 

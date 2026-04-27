@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OJ系统 - 登录与注册</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .auth-container { background: white; width: 400px; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid #eee; }
+        .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: #666; font-weight: bold; transition: all 0.3s; }
+        .tab:hover { color: #20b597; }
+        .tab.active { color: #20b597; border-bottom: 2px solid #20b597; margin-bottom: -2px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group input { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px; transition: all 0.3s; background-color: #fafafa; }
+        .form-group input:focus { border-color: #20b597; background-color: #fff; outline: none; box-shadow: 0 0 0 3px rgba(32, 181, 151, 0.1); }
+        .flex-group { display: flex; gap: 10px; align-items: center; }
+        .flex-group input { flex: 1; }
+        .captcha-box { width: 100px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; background: #f2f2f2; border-radius: 5px; overflow: hidden; border: 1px solid #ddd; }
+        .btn { width: 100%; padding: 12px; background: #20b597; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: all 0.3s; }
+        .btn:hover { background: #1aa085; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(26, 160, 133, 0.3); }
+        .btn-secondary { background: #f59e0b; width: 110px; white-space: nowrap; font-size: 14px; padding: 12px 0; }
+        .btn-secondary:hover { background: #d97706; }
+        .form-section { display: none; }
+        .form-section.active { display: block; }
+        .link-text { text-align: center; margin-top: 15px; font-size: 14px; color: #20b597; cursor: pointer; font-weight: bold; }
+        .link-text:hover { text-decoration: underline; }
+
+        /* Toast 提示框系统 */
+        #toast_container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        .toast {
+            min-width: 250px; padding: 15px 20px; margin-bottom: 15px; border-radius: 6px; color: #fff; font-size: 15px; font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); opacity: 0; transform: translateX(100%);
+            transition: opacity 0.3s, transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .toast.show { opacity: 1; transform: translateX(0); }
+        .toast-success { background-color: #10b981; }
+        .toast-error { background-color: #ef4444; }
+        .toast-warning { background-color: #f59e0b; }
+    </style>
+</head>
+<body>
+
+<div id="toast_container"></div>
+
+<div class="auth-container">
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('login')">用户登录</div>
+        <div class="tab" onclick="switchTab('register')">注册账号</div>
+    </div>
+
+    <div id="login-form" class="form-section active">
+        <div class="form-group"><input type="text" id="login_username" placeholder="请输入用户名"></div>
+        <div class="form-group"><input type="password" id="login_password" placeholder="请输入密码"></div>
+        <button class="btn" onclick="doLogin()">登 录</button>
+        <div class="link-text" onclick="switchTab('reset')">忘记密码？点击找回</div>
+    </div>
+
+    <div id="register-form" class="form-section">
+        <div class="form-group"><input type="text" id="reg_username" placeholder="设置用户名"></div>
+        <div class="form-group"><input type="password" id="reg_password" placeholder="设置密码"></div>
+        <div class="form-group"><input type="email" id="reg_email" placeholder="输入常用邮箱"></div>
+        
+        <div class="form-group flex-group">
+            <input type="text" id="reg_captcha" placeholder="右侧图形验证码">
+            <div class="captcha-box" onclick="loadCaptcha()" title="点击刷新" id="reg_captcha_img">加载中</div>
+        </div>
+        
+        <div class="form-group flex-group">
+            <input type="text" id="reg_email_code" placeholder="邮箱验证码">
+            <button class="btn btn-secondary" onclick="sendEmailCode('register')">获取验证码</button>
+        </div>
+        <button class="btn" onclick="doRegister()">立即注册</button>
+    </div>
+
+    <div id="reset-form" class="form-section">
+        <h3 style="text-align: center; margin-top: 0; color: #333; border-left: 4px solid #f59e0b; padding-left: 10px; display: inline-block;">重置密码</h3>
+        <div class="form-group"><input type="email" id="reset_email" placeholder="输入注册时的邮箱"></div>
+        
+        <div class="form-group flex-group">
+            <input type="text" id="reset_captcha" placeholder="右侧图形验证码">
+            <div class="captcha-box" onclick="loadCaptcha()" title="点击刷新" id="reset_captcha_img">加载中</div>
+        </div>
+        
+        <div class="form-group flex-group">
+            <input type="text" id="reset_email_code" placeholder="邮箱验证码">
+            <button class="btn btn-secondary" onclick="sendEmailCode('reset')">获取验证码</button>
+        </div>
+        <div class="form-group"><input type="password" id="reset_password" placeholder="设置新密码"></div>
+        <button class="btn" onclick="doReset()">确认重置</button>
+        <div class="link-text" onclick="switchTab('login')">返回登录</div>
+    </div>
+</div>
+
+<script>
+    let currentSessionId = "";
+
+    // 现代化 Toast 提示系统
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toast_container');
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = `<span>${message}</span>`;
+        container.appendChild(toast);
+
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300); 
+        }, 3000);
+    }
+
+    // 切换面板
+    function switchTab(tabName) {
+        document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById(tabName + '-form').classList.add('active');
+        
+        if (tabName === 'login') {
+            document.querySelectorAll('.tab')[0].classList.add('active');
+        } else if (tabName === 'register') {
+            document.querySelectorAll('.tab')[1].classList.add('active');
+            loadCaptcha(); // 切换到注册时刷新验证码
+        } else if (tabName === 'reset') {
+            loadCaptcha(); // 切换到找回密码时刷新验证码
+        }
+    }
+
+    // 获取图形验证码
+    async function loadCaptcha() {
+        try {
+            const res = await fetch('/api/captcha');
+            const data = await res.json();
+            currentSessionId = data.session_id;
+            document.getElementById('reg_captcha_img').innerHTML = data.svg;
+            document.getElementById('reset_captcha_img').innerHTML = data.svg;
+        } catch (e) {
+            showToast("验证码加载失败，请检查网络", "error");
+        }
+    }
+
+    // 发送邮件验证码
+    async function sendEmailCode(type) {
+        const prefix = type === 'register' ? 'reg_' : 'reset_';
+        const email = document.getElementById(prefix + 'email').value;
+        const captcha_code = document.getElementById(prefix + 'captcha').value;
+        
+        if (!email || !captcha_code) {
+            showToast("请先填写邮箱和图形验证码！", "warning");
+            return;
+        }
+
+        try {
+            showToast("正在发送邮件，请稍候...", "warning");
+            const res = await fetch('/api/send_code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: email,
+                    captcha_code: captcha_code,
+                    session_id: currentSessionId,
+                    type: type
+                })
+            });
+            const data = await res.json();
+            
+            if (data.status === 0) {
+                showToast(data.reason, "success");
+            } else {
+                showToast(data.reason, "error");
+                loadCaptcha(); // 失败后刷新图形验证码
+                document.getElementById(prefix + 'captcha').value = ""; 
+            }
+        } catch (e) {
+            showToast("网络请求失败，请检查服务器状态", "error");
+        }
+    }
+
+    // 登录逻辑
+    async function doLogin() {
+        const username = document.getElementById('login_username').value;
+        const password = document.getElementById('login_password').value;
+        if (!username || !password) return showToast("请完整填写账号和密码！", "warning");
+
+        try {
+            const res = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            if (data.status === 0) {
+                showToast("登录成功！即将进入系统...", "success");
+                localStorage.setItem("oj_token", data.token);
+                localStorage.setItem("oj_role", data.role);
+                localStorage.setItem("oj_username", username);
+                setTimeout(() => { window.location.href = "/index.html"; }, 1000);
+            } else {
+                showToast(data.reason, "error");
+            }
+        } catch(e) {
+            showToast("请求失败，请检查服务器", "error");
+        }
+    }
+
+    // 注册逻辑
+    async function doRegister() {
+        const username = document.getElementById('reg_username').value;
+        const password = document.getElementById('reg_password').value;
+        const email = document.getElementById('reg_email').value;
+        const email_code = document.getElementById('reg_email_code').value;
+
+        if (!username || !password || !email || !email_code) return showToast("请将信息填写完整！", "warning");
+
+        try {
+            const res = await fetch('/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password, email, email_code })
+            });
+            const data = await res.json();
+            
+            if (data.status === 0) {
+                showToast("注册成功！已为您切换至登录页", "success");
+                switchTab('login');
+                document.getElementById('login_username').value = username;
+                document.getElementById('login_password').value = '';
+            } else {
+                showToast(data.reason, "error");
+            }
+        } catch(e) {
+            showToast("注册请求异常", "error");
+        }
+    }
+
+    // 重置密码逻辑
+    async function doReset() {
+        const email = document.getElementById('reset_email').value;
+        const password = document.getElementById('reset_password').value;
+        const email_code = document.getElementById('reset_email_code').value;
+
+        if (!email || !password || !email_code) return showToast("请将找回信息填写完整！", "warning");
+
+        try {
+            const res = await fetch('/api/reset_password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, email_code })
+            });
+            const data = await res.json();
+            
+            if (data.status === 0) {
+                showToast("密码重置成功！请妥善保管新密码", "success");
+                setTimeout(() => { switchTab('login'); }, 1000);
+            } else {
+                showToast(data.reason, "error");
+            }
+        } catch(e) {
+            showToast("重置请求异常", "error");
+        }
+    }
+</script>
+
+</body>
+</html>
