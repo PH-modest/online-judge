@@ -1094,6 +1094,58 @@ namespace ns_model
             return true;
         }
 
+        // 获取系统总题目数
+        int GetTotalQuestionCount()
+        {
+            MYSQL *my = mysql_init(nullptr);
+            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0)) return 0;
+            mysql_set_character_set(my, "utf8");
+
+            int count = 0;
+            std::string sql = "SELECT COUNT(*) FROM oj_questions";
+            if (0 == mysql_query(my, sql.c_str()))
+            {
+                MYSQL_RES *res = mysql_store_result(my);
+                if (res && mysql_num_rows(res) > 0)
+                {
+                    count = atoi(mysql_fetch_row(res)[0]);
+                    mysql_free_result(res);
+                }
+            }
+            mysql_close(my);
+            return count;
+        }
+
+        // 获取用户正在尝试（提交过但 state=0）的题目
+        bool GetAttemptingQuestions(int user_id, std::vector<Question> *qs)
+        {
+            MYSQL *my = mysql_init(nullptr);
+            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0)) return false;
+            mysql_set_character_set(my, "utf8");
+
+            // 联表查询：查出用户状态为 0 (尝试中) 的题号和题目名称
+            std::string sql = "SELECT q.number, q.title, q.star FROM oj_questions q "
+                              "JOIN oj_user_question_status s ON q.number = s.question_number "
+                              "WHERE s.user_id = " + std::to_string(user_id) + " AND s.state = 0";
+            if (0 == mysql_query(my, sql.c_str()))
+            {
+                MYSQL_RES *res = mysql_store_result(my);
+                int rows = mysql_num_rows(res);
+                for (int i = 0; i < rows; i++)
+                {
+                    MYSQL_ROW row = mysql_fetch_row(res);
+                    Question q;
+                    q.number = row[0];
+                    q.title = row[1];
+                    q.star = row[2]; 
+                    qs->push_back(q);
+                }
+                mysql_free_result(res);
+            }
+            mysql_close(my);
+            return true;
+        }
+
         ~Model()
         {
         }

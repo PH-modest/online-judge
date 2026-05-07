@@ -818,5 +818,36 @@ namespace ns_control
             *out_json = writer.write(root);
             return true;
         }
+
+        // 个人中心业务逻辑
+        bool GetProfileExtras(int user_id, Json::Value* data) {
+            (*data)["total_questions"] = _model.GetTotalQuestionCount();
+            
+            // 获取正在尝试的题目
+            std::vector<ns_model::Question> qs;
+            _model.GetAttemptingQuestions(user_id, &qs);
+            Json::Value attempt_arr(Json::arrayValue);
+            for (auto& q : qs) {
+                Json::Value item;
+                item["number"] = q.number; 
+                item["title"] = q.title;
+                item["star"] = q.star;
+                attempt_arr.append(item);
+            }
+            (*data)["attempting_list"] = attempt_arr;
+
+            // 获取加入的班级
+            std::vector<ns_model::ClassInfo> classes;
+            _model.GetClassesByUserId(user_id, &classes);
+            Json::Value class_arr(Json::arrayValue);
+            for (auto& c : classes) {
+                Json::Value item;
+                item["id"] = c.id; 
+                item["name"] = c.name;
+                class_arr.append(item);
+            }
+            (*data)["class_list"] = class_arr;
+            return true;
+        }
     };
 }

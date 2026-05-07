@@ -4,6 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <title>灵犀OJ</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
     <style>
         * {
             margin: 0;
@@ -346,51 +349,159 @@
             transform: scale(1.3);
             cursor: pointer;
         }
+
+        .modal-large {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            width: 650px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .code-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: Consolas, 'Courier New', monospace;
+            font-size: 14px;
+            outline: none;
+            background-color: #282c34;
+            color: #abb2bf;
+            resize: vertical;
+        }
+
+        .code-input:focus {
+            border-color: #20b597;
+        }
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #666;
+            font-weight: bold;
+        }
+
+        .modern-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 15px;
+            outline: none;
+            transition: all 0.3s;
+            background-color: #fafafa;
+        }
+
+        .modern-input:focus {
+            border-color: #20b597;
+            background-color: #fff;
+            box-shadow: 0 0 0 3px rgba(32, 181, 151, 0.1);
+        }
+
+        .modern-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <div class="navbar">
+        <div class="navbar" id="nav_app">
             <div class="nav-links">
                 <a href="/" style="font-size: 20px; font-weight: bold; color: #20b597;">灵犀OJ</a>
                 <a href="/all_questions">题库</a>
                 <a href="/leaderboard.html">排行榜</a>
-                <a href="/classes.html" style="color: #8b5cf6; font-weight: bold;">我的班级</a>
-                <a href="javascript:void(0);" id="admin_add_nav" onclick="window.location.href='/all_questions'"
-                    style="display: none; color: #f59e0b; font-weight: bold;">录入题目</a>
+                <a href="/classes.html" v-if="isLoggedIn" style="color: #8b5cf6; font-weight: bold;">我的班级</a>
+                <a href="javascript:void(0);" v-if="userInfo.role === 1" @click="triggerAddModal"
+                    style="color: #f59e0b; font-weight: bold;">录入题目</a>
             </div>
 
-            <div>
-                <span id="user_info" style="color: #333; font-weight: bold; margin-right: 15px; display: none;"></span>
-                <a href="javascript:void(0);" onclick="logout()" id="logout_btn"
-                    style="display: none; color: #ef4444; text-decoration: none; font-weight: 500;">退出</a>
+            <div style="display: flex; align-items: center;">
+                <a v-if="!isLoggedIn" href="/auth.html"
+                    style="padding: 8px 20px; background: #20b597; color: white; border-radius: 20px; text-decoration: none; font-weight: bold;">登录
+                    / 注册</a>
+
+                <div v-if="isLoggedIn">
+                    <el-dropdown @command="handleCommand">
+                        <span class="el-dropdown-link"
+                            style="cursor: pointer; font-weight: bold; color: #409EFF; font-size: 16px;">
+                            <span v-text="userInfo.username"></span> <i class="el-icon-arrow-down el-icon--right"></i>
+                        </span>
+                        <el-dropdown-menu slot="dropdown">
+                            <el-dropdown-item command="profile" icon="el-icon-user">个人中心</el-dropdown-item>
+                            <el-dropdown-item command="logout" divided
+                                icon="el-icon-switch-button">退出登录</el-dropdown-item>
+                        </el-dropdown-menu>
+                    </el-dropdown>
+                </div>
             </div>
         </div>
 
         <script>
-            (function () {
-                let username = localStorage.getItem("oj_username");
-                let token = localStorage.getItem("oj_token");
-                let role = localStorage.getItem("oj_role");
-
-                if (username && token) {
-                    document.getElementById("login_btn").style.display = "none";
-
-                    let userInfo = document.getElementById("user_info");
-                    userInfo.innerText = "欢迎，" + username;
-                    userInfo.style.display = "inline-block";
-
-                    document.getElementById("logout_btn").style.display = "inline-block";
-
-                    if (role == "1" || role === 1) {
-                        let adminNav = document.getElementById("admin_add_nav");
-                        if (adminNav) adminNav.style.display = "inline-block";
+            new Vue({
+                el: '#nav_app',
+                data: {
+                    isLoggedIn: false,
+                    userInfo: {
+                        username: '',
+                        role: 0
                     }
-                    let navClasses = document.getElementById("nav_classes");
-                    if (navClasses) navClasses.style.display = "inline-block";
+                },
+                created() {
+                    // 组件初始化时，从 localStorage 读取状态
+                    let username = localStorage.getItem("oj_username");
+                    let token = localStorage.getItem("oj_token");
+                    let role = localStorage.getItem("oj_role");
+
+                    if (username && token) {
+                        this.isLoggedIn = true;
+                        this.userInfo.username = username;
+                        // 将 role 转换为数字类型确保判断准确
+                        this.userInfo.role = parseInt(role) || 0;
+                    }
+                },
+                methods: {
+                    triggerAddModal() {
+                        if (typeof window.openAddModal === 'function') {
+                            window.openAddModal();
+                        } else {
+                            alert("当前页面缺少录题弹窗代码！");
+                        }
+                    },
+                    handleCommand(command) {
+                        if (command === 'logout') {
+                            // 直接调用 index.html 底部已有的原生 logout 函数
+                            if (typeof logout === 'function') logout();
+                        } else if (command === 'profile') {
+                            window.location.href = '/profile.html';
+                        }
+                    }
                 }
-            })();
+            });
         </script>
 
         <div class="content-area">
@@ -566,6 +677,61 @@
     </div>
     <div id="toast_container"></div>
 
+    <div id="modal_overlay" class="modal-overlay" onclick="closeAddModal()"></div>
+
+    <div id="add_question_modal" class="modal-large">
+        <span onclick="closeAddModal()"
+            style="position:absolute; top:15px; right:20px; font-size:26px; cursor:pointer; color:#aaa; transition: 0.3s;"
+            onmouseover="this.style.color='#333'" onmouseout="this.style.color='#aaa'">&times;</span>
+        <h2 style="margin-bottom: 20px; color: #333; border-left: 4px solid #f59e0b; padding-left: 10px;">管理员录题系统</h2>
+        
+        <div style="display: flex; gap: 15px;">
+            <div class="form-group" style="flex: 2;">
+                <label>题目标题 (不可重复)</label>
+                <input type="text" id="add_title" class="modern-input" placeholder="例如：两数之和">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>难度</label>
+                <select id="add_star" class="modern-input" style="cursor: pointer;">
+                    <option value="简单">简单</option>
+                    <option value="中等" selected>中等</option>
+                    <option value="困难">困难</option>
+                </select>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 15px;">
+            <div class="form-group" style="flex: 1;">
+                <label>时间限制 (秒)</label>
+                <input type="number" id="add_cpu" class="modern-input" value="1" min="1">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>空间限制 (KB)</label>
+                <input type="number" id="add_mem" class="modern-input" value="50000" min="1024">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>题目描述 (支持文本/简单排版)</label>
+            <textarea id="add_desc" class="modern-input" rows="4" placeholder="请输入题目要求、输入输出格式等..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>预设代码 (Header) - 展现给用户的初始代码</label>
+            <textarea id="add_header" class="code-input" rows="4"
+                placeholder="#include <iostream>&#10;using namespace std;&#10;&#10;class Solution {&#10;public:&#10;    // 在此编写你的代码&#10;};"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>测试用例 (Tail) - 隐藏在后台用于校验的 main 函数</label>
+            <textarea id="add_tail" class="code-input" rows="6"
+                placeholder="int main() {&#10;    Solution s;&#10;    // 添加 assert 或 if 校验输出结果&#10;    return 0;&#10;}"></textarea>
+        </div>
+        
+        <button onclick="submitNewQuestion()" class="modern-btn btn-primary"
+            style="background-color: #f59e0b;">确认操作</button>
+    </div>
+
     <script>
         let currentClassId = 0;
         function showToast(message, type = 'success') { const container = document.getElementById('toast_container'); const toast = document.createElement('div'); toast.className = `toast toast-${type}`; toast.innerHTML = `<span>${message}</span>`; container.appendChild(toast); setTimeout(() => toast.classList.add('show'), 10); setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3000); }
@@ -577,9 +743,14 @@
 
             if (username && token) {
                 // 1. 渲染文字和退出按钮 (和做题页保持一致的逻辑)
-                document.getElementById("user_info").innerText = "欢迎，" + username;
-                document.getElementById("user_info").style.display = "inline-block";
-                document.getElementById("logout_btn").style.display = "inline-block";
+                let userInfoName = document.getElementById("user_info_name");
+                if (userInfoName) userInfoName.innerText = username;
+
+                let userDropdown = document.getElementById("user_dropdown_menu");
+                if (userDropdown) userDropdown.style.display = "inline-block";
+
+                let loginBtn = document.getElementById("login_btn");
+                if (loginBtn) loginBtn.style.display = "none";
 
                 // 2. 如果是管理员 (role == 1)，显示“录入题目”按钮
                 if (role === "1" || role === 1) {
@@ -592,9 +763,56 @@
         }
         function switchView(viewId) { document.getElementById('view_class_list').style.display = 'none'; document.getElementById('view_class_dashboard').style.display = 'none'; document.getElementById('view_assignment_detail').style.display = 'none'; document.getElementById(viewId).style.display = 'block'; }
         function openModal(modalId) { document.getElementById('modal_overlay').style.display = 'block'; document.getElementById(modalId).style.display = 'block'; }
-        function closeAllModals() { document.getElementById('modal_overlay').style.display = 'none'; document.querySelectorAll('.custom-modal').forEach(m => m.style.display = 'none'); }
+        function closeAllModals() {
+            document.getElementById('modal_overlay').style.display = 'none';
+            document.querySelectorAll('.custom-modal').forEach(m => m.style.display = 'none');
+            let addModal = document.getElementById('add_question_modal');
+            if (addModal) addModal.style.display = 'none';
+        }
 
-        // 1. 新增这个封装函数
+        // 关闭录题弹窗函数
+        function closeAddModal() {
+            document.getElementById('modal_overlay').style.display = 'none';
+            document.getElementById('add_question_modal').style.display = 'none';
+            document.getElementById('add_title').value = '';
+            document.getElementById('add_desc').value = '';
+            document.getElementById('add_header').value = '';
+            document.getElementById('add_tail').value = '';
+        }
+
+        // 提交录题函数
+        function submitNewQuestion() {
+            let title = document.getElementById("add_title").value.trim();
+            let star = document.getElementById("add_star").value;
+            let desc = document.getElementById("add_desc").value.trim();
+            let header = document.getElementById("add_header").value.trim();
+            let tail = document.getElementById("add_tail").value.trim();
+            let cpu = document.getElementById("add_cpu").value;
+            let mem = document.getElementById("add_mem").value;
+
+            if (!title || !desc || !header || !tail) {
+                showToast("请完整填写标题、描述及代码片段！", "warning"); return;
+            }
+
+            fetch('/admin/add_question', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': localStorage.getItem("oj_token") },
+                body: JSON.stringify({ title: title, star: star, desc: desc, header: header, tail: tail, cpu_limit: parseInt(cpu), mem_limit: parseInt(mem) })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 0) {
+                    showToast("✅ 题目《" + title + "》录入成功！", "success");
+                    closeAddModal();
+                } else {
+                    showToast("❌ 录入失败：" + data.reason, "error");
+                    if (data.status === -2) setTimeout(logout, 1500);
+                }
+            })
+            .catch(error => { showToast("网络请求失败", "error"); });
+        }
+
+        // 新增这个封装函数
         function fetchMyClasses() {
             const token = localStorage.getItem("oj_token");
             if (!token) return;
@@ -634,7 +852,7 @@
                 });
         }
 
-        // 2. 新增删除与退出的交互逻辑
+        // 删除与退出的交互逻辑
         function doDeleteClass(classId, className) {
             if (!confirm(`⚠️ 警告：确定要彻底解散班级【${className}】吗？\n该操作不可撤销，班级成员和题单都将被清除！`)) return;
 
@@ -657,7 +875,7 @@
                 });
         }
 
-        // 【新增】退出班级 (学生操作)
+        // 退出班级 (学生操作)
         function doLeaveClass(classId, className) {
             if (!confirm(`确定要退出班级【${className}】吗？`)) return;
 
@@ -683,12 +901,30 @@
         window.onload = function () {
             if (!localStorage.getItem("oj_token")) {
                 alert("请先登录！");
-                window.location.href = "/";
+                window.location.href = "/auth.html"; // 统一跳转到 auth.html
                 return;
             }
-            // 确保页面加载后立即显示用户名
             renderLoginStatus();
-            loadMyClasses();
+
+            // 解析 URL 中的 id 参数，实现自动进入
+            const urlParams = new URLSearchParams(window.location.search);
+            const autoClassId = urlParams.get('id');
+
+            if (autoClassId) {
+                // 先获取列表，找到对应的班级名称和角色，再自动触发进入
+                fetch('/api/class/list', { headers: { 'Authorization': localStorage.getItem("oj_token") } })
+                    .then(res => res.json())
+                    .then(data => {
+                        const target = data.find(c => c.id == autoClassId);
+                        if (target) {
+                            enterClassDashboard(target.id, target.name, target.role);
+                        } else {
+                            loadMyClasses();
+                        }
+                    });
+            } else {
+                loadMyClasses();
+            }
         };
 
         function loadMyClasses() {
@@ -740,10 +976,10 @@
             document.getElementById('question_select_modal').style.display = 'block';
             let searchInput = document.getElementById('q_search_input');
             searchInput.value = ''; // 进入时清空搜索框
-            
+
             // 如果缓存里已经有题目了，直接渲染全部题目；没有的话再去后端拉取
             if (allQuestionsCache.length > 0) {
-                renderSelectorList(''); 
+                renderSelectorList('');
             } else {
                 loadQuestionList();
             }
@@ -788,7 +1024,7 @@
             const listDiv = document.getElementById('q_selector_list');
             let html = '';
             let count = 0;
-            
+
             allQuestionsCache.forEach(q => {
                 // 前端模糊匹配：如果有搜索词，且不匹配题号和标题，则跳过不渲染
                 if (keyword && !q.title.includes(keyword) && q.number !== keyword) return;
@@ -803,7 +1039,7 @@
                          </div>`;
                 count++;
             });
-            
+
             if (count === 0) html = '<div style="padding:20px; text-align:center; color:#999;">没有找到匹配的题目</div>';
             listDiv.innerHTML = html;
         }
@@ -845,7 +1081,7 @@
             renderSelectedTags(); // 重置UI
             openModal('publish_modal');
         }
-        
+
         // 渲染题库列表（支持搜索过滤）
         function renderSelectorList(keyword) {
             const listDiv = document.getElementById('q_selector_list');

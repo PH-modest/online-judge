@@ -1056,6 +1056,86 @@ int main()
         }
         rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); });
 
+        // 获取用户个人中心全量数据
+        svr.Get("/api/user/profile", [&ctrl, &user_model](const Request &req, Response &rsp)
+            {
+        Json::Value rsp_json;
+        Json::FastWriter writer;
+
+        std::string token = req.get_header_value("Authorization");
+        int user_id = 0, role = 0; std::string username = "";
+        if (!ns_util::JwtUtil::VerifyToken(token, &user_id, &username, &role)) {
+            rsp_json["status"] = -2; rsp_json["reason"] = "登录凭证无效！";
+            rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); return;
+        }
+
+        std::string reg_time;
+        int pass_count = 0, submit_count = 0, real_role = 0;
+        if (user_model.GetUserStats(user_id, &username, &real_role, &reg_time, &pass_count, &submit_count)) {
+            rsp_json["status"] = 0;
+            rsp_json["data"]["username"] = username;
+            rsp_json["data"]["role"] = real_role;
+            rsp_json["data"]["register_time"] = reg_time;
+            rsp_json["data"]["pass_count"] = pass_count;
+            rsp_json["data"]["submit_count"] = submit_count;
+            
+            // 调用 Control 层的包裹函数获取额外数据
+            ctrl.GetProfileExtras(user_id, &(rsp_json["data"]));
+        } else {
+            rsp_json["status"] = -1; rsp_json["reason"] = "获取用户数据失败";
+        }
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); 
+    });
+
+    // 修改用户名
+    svr.Post("/api/user/update_name", [&user_model](const Request &req, Response &rsp)
+             {
+        Json::Reader reader; Json::Value req_json, rsp_json; Json::FastWriter writer;
+        std::string token = req.get_header_value("Authorization");
+        int user_id = 0, role = 0; std::string username = "";
+        if (!ns_util::JwtUtil::VerifyToken(token, &user_id, &username, &role)) {
+            rsp_json["status"] = -2; rsp.set_content(writer.write(rsp_json), "application/json"); return;
+        }
+
+        if (reader.parse(req.body, req_json)) {
+            std::string new_name = req_json["new_name"].asString();
+            std::string reason;
+            if (user_model.UpdateUsername(user_id, new_name, &reason)) {
+                rsp_json["status"] = 0;
+                rsp_json["reason"] = reason;
+                // 注意：因为 JWT 中包含用户名，名字改了必须下发新 Token
+                rsp_json["new_token"] = ns_util::JwtUtil::GenerateToken(user_id, new_name, role);
+            } else {
+                rsp_json["status"] = -1; rsp_json["reason"] = reason;
+            }
+        }
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); 
+    });
+
+    // 修改密码
+    svr.Post("/api/user/update_pwd", [&user_model](const Request &req, Response &rsp)
+             {
+        Json::Reader reader; Json::Value req_json, rsp_json; Json::FastWriter writer;
+        std::string token = req.get_header_value("Authorization");
+        int user_id = 0, role = 0; std::string username = "";
+        if (!ns_util::JwtUtil::VerifyToken(token, &user_id, &username, &role)) {
+            rsp_json["status"] = -2; rsp.set_content(writer.write(rsp_json), "application/json"); return;
+        }
+
+        if (reader.parse(req.body, req_json)) {
+            std::string old_pwd = req_json["old_pwd"].asString();
+            std::string new_pwd = req_json["new_pwd"].asString();
+            std::string reason;
+            if (user_model.UpdatePassword(user_id, old_pwd, new_pwd, &reason)) {
+                rsp_json["status"] = 0; rsp_json["reason"] = reason;
+            } else {
+                rsp_json["status"] = -1; rsp_json["reason"] = reason;
+            }
+        }
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); 
+    });
+
+
     svr.set_base_dir("./wwwroot");
     svr.listen("0.0.0.0", 8102);
     return 0;
