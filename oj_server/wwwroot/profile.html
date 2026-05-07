@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人中心 - Online Judge</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            background-color: #f4f6f8;
+            margin: 0;
+            font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        }
+
+        .navbar {
+            width: 100%;
+            height: 60px;
+            background-color: #ffffff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+
+        .nav-links a {
+            display: inline-block;
+            padding: 0 20px;
+            color: #555;
+            font-size: 16px;
+            font-weight: 500;
+            line-height: 60px;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: #20b597;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .box-card {
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border: none;
+            box-shadow: 0 2px 12px 0 rgba(0, 0, 0, .05);
+        }
+
+        .stat-panel {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 20px 0;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            border-left: 4px solid #409EFF;
+            padding-left: 10px;
+            color: #333;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            z-index: 999;
+        }
+
+        .modal-large {
+            display: none;
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            width: 650px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .form-group { text-align: left; margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 14px; color: #666; font-weight: bold; }
+        
+        .modern-input {
+            width: 100%; box-sizing: border-box; padding: 12px 15px;
+            border: 1px solid #ddd; border-radius: 6px; font-size: 15px;
+            outline: none; transition: all 0.3s; background-color: #fafafa;
+        }
+        .modern-input:focus {
+            border-color: #20b597; background-color: #fff;
+            box-shadow: 0 0 0 3px rgba(32, 181, 151, 0.1);
+        }
+
+        .modern-btn {
+            width: 100%; padding: 12px; border: none; border-radius: 6px;
+            font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s;
+        }
+        .btn-primary { background-color: #20b597; color: white; }
+        .btn-primary:hover { background-color: #1aa085; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(26, 160, 133, 0.3); }
+        
+        .code-input {
+            width: 100%; box-sizing: border-box; padding: 12px;
+            border: 1px solid #ddd; border-radius: 6px;
+            font-family: Consolas, 'Courier New', monospace; font-size: 14px;
+            outline: none; background-color: #282c34; color: #abb2bf; resize: vertical;
+        }
+        .code-input:focus { border-color: #20b597; }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div class="navbar">
+            <div class="nav-links">
+                <a href="/" style="font-size: 20px; font-weight: bold; color: #20b597;">灵犀OJ</a>
+                <a href="/all_questions">题库</a>
+                <a href="/leaderboard.html">排行榜</a>
+                <a href="/classes.html" style="color: #8b5cf6; font-weight: bold;">我的班级</a>
+                <a href="javascript:void(0);" v-if="userInfo.role === 1" @click="triggerAddModal"
+                    style="color: #f59e0b; font-weight: bold;">录入题目</a>
+            </div>
+            <div>
+                <el-dropdown @command="handleCommand">
+                    <span class="el-dropdown-link"
+                        style="cursor: pointer; font-weight: bold; color: #409EFF; font-size: 16px;">
+                        <span v-text="userInfo.username"></span> <i class="el-icon-arrow-down el-icon--right"></i>
+                    </span>
+                    <el-dropdown-menu slot="dropdown">
+                        <el-dropdown-item command="profile" icon="el-icon-user">个人中心</el-dropdown-item>
+                        <el-dropdown-item command="logout" divided icon="el-icon-switch-button">退出登录</el-dropdown-item>
+                    </el-dropdown-menu>
+                </el-dropdown>
+            </div>
+        </div>
+
+        <div class="container">
+            <el-row :gutter="20">
+                <el-col :xs="24" :sm="8">
+                    <el-card class="box-card">
+                        <div style="text-align: center; padding: 10px 0;">
+                            <!-- <el-avatar :size="80"
+                                src="https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png"></el-avatar> -->
+                            <h2 style="margin: 15px 0 5px 0;" v-text="userInfo.username"></h2>
+                            </h2>
+                            <el-tag size="small" :type="userInfo.role === 1 ? 'danger' : 'info'"
+                                style="margin-bottom: 10px;" v-text="userInfo.role === 1 ? '管理员/教师' : '学生'">
+                            </el-tag>
+                            <p style="color: #999; font-size: 13px; margin: 5px 0 20px 0;">加入时间: <span
+                                    v-text="userInfo.register_time"></span></p>
+
+                            <div style="display: flex; justify-content: center; gap: 10px;">
+                                <el-button type="primary" size="small" plain icon="el-icon-edit"
+                                    @click="nameDialogVisible = true">修改名称</el-button>
+                                <el-button type="warning" size="small" plain icon="el-icon-lock"
+                                    @click="pwdDialogVisible = true">修改密码</el-button>
+                            </div>
+                        </div>
+                    </el-card>
+
+                    <el-card class="box-card">
+                        <div class="section-title">我的班级</div>
+                        <el-table :data="classList" style="width: 100%" :show-header="false">
+                            <el-table-column prop="name"></el-table-column>
+                            <el-table-column width="60" align="right">
+                                <template slot-scope="scope">
+                                    <el-button type="text" size="small" @click="goToClass(scope.row.id)">进入</el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                        <div v-if="classList.length === 0"
+                            style="color: #999; text-align: center; padding: 20px 0; font-size: 14px;">暂未加入任何班级</div>
+                    </el-card>
+                </el-col>
+
+                <el-col :xs="24" :sm="16">
+                    <el-card class="box-card">
+                        <div class="section-title">数据看板</div>
+                        <div class="stat-panel">
+                            <div style="width: 45%;">
+                                <div
+                                    style="margin-bottom: 10px; font-size: 14px; color: #666; display: flex; justify-content: space-between;">
+                                    <span>已解答进度</span>
+                                    <span><b v-text="userInfo.pass_count"></b> / <span v-text="totalQuestions"></span>
+                                        题</span>
+                                </div>
+                                <el-progress :text-inside="true" :stroke-width="22" :percentage="solvedPercentage"
+                                    status="success"></el-progress>
+                            </div>
+
+                            <div class="stat-item">
+                                <div style="margin-bottom: 10px; font-size: 14px; color: #666;">提交通过率</div>
+                                <el-progress type="dashboard" :percentage="passRate" :color="colors"
+                                    :width="110"></el-progress>
+                                <div style="font-size: 12px; color: #999; margin-top: -10px;">总提交: <span
+                                        v-text="userInfo.submit_count"></span> 次</div>
+                            </div>
+                        </div>
+                    </el-card>
+
+                    <el-card class="box-card">
+                        <div class="section-title">正在尝试 (已提交未通过)</div>
+                        <el-table :data="attemptingList" style="width: 100%">
+                            <el-table-column prop="number" label="题号" width="80" align="center"></el-table-column>
+                            <el-table-column prop="title" label="题目名称">
+                                <template slot-scope="scope">
+                                    <el-link type="primary" :underline="false" @click="goToQuestion(scope.row.number)">
+                                        <b>{{ scope.row.title }}</b>
+                                    </el-link>
+                                </template>
+                            </el-table-column>
+                            <el-table-column prop="star" label="难度" width="100" align="center">
+                                <template slot-scope="scope">
+                                    <el-tag size="small" :type="getDifficultyColor(scope.row.star)" effect="plain">{{
+                                        scope.row.star }}</el-tag>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                        <div v-if="attemptingList.length === 0"
+                            style="color: #999; text-align: center; padding: 40px 0; font-size: 14px;">
+                            <i class="el-icon-check"
+                                style="font-size: 24px; color: #67C23A; margin-bottom: 10px;"></i><br>
+                            太棒了！当前没有未通过的题目。
+                        </div>
+                    </el-card>
+                </el-col>
+            </el-row>
+        </div>
+
+        <el-dialog title="修改名称" :visible.sync="nameDialogVisible" width="400px">
+            <el-input v-model="newName" placeholder="请输入新名称" maxlength="20" clearable></el-input>
+            <span slot="footer" class="dialog-footer">
+                <el-button @click="nameDialogVisible = false" size="small">取消</el-button>
+                <el-button type="primary" @click="updateName" :loading="btnLoading" size="small">保存</el-button>
+            </span>
+        </el-dialog>
+
+        <el-dialog title="修改密码" :visible.sync="pwdDialogVisible" width="400px">
+            <el-form label-width="80px" size="small">
+                <el-form-item label="原密码">
+                    <el-input v-model="pwdForm.old_pwd" type="password" placeholder="请输入原密码" show-password></el-input>
+                </el-form-item>
+                <el-form-item label="新密码">
+                    <el-input v-model="pwdForm.new_pwd" type="password" placeholder="请输入新密码" show-password></el-input>
+                </el-form-item>
+            </el-form>
+            <span slot="footer" class="dialog-footer">
+                <el-button @click="pwdDialogVisible = false" size="small">取消</el-button>
+                <el-button type="primary" @click="updatePwd" :loading="btnLoading" size="small">确定修改</el-button>
+            </span>
+        </el-dialog>
+
+    </div>
+
+    <script>
+        new Vue({
+            el: '#app',
+            data() {
+                return {
+                    token: localStorage.getItem('oj_token') || '',
+                    userInfo: {
+                        username: '加载中...',
+                        role: 0,
+                        register_time: '-',
+                        pass_count: 0,
+                        submit_count: 0
+                    },
+                    totalQuestions: 0,
+                    attemptingList: [],
+                    classList: [],
+
+                    nameDialogVisible: false,
+                    pwdDialogVisible: false,
+                    newName: '',
+                    pwdForm: { old_pwd: '', new_pwd: '' },
+                    btnLoading: false,
+
+                    // 仪表盘颜色动态变化
+                    colors: [
+                        { color: '#f56c6c', percentage: 20 },
+                        { color: '#e6a23c', percentage: 40 },
+                        { color: '#5cb87a', percentage: 60 },
+                        { color: '#1989fa', percentage: 80 },
+                        { color: '#6f7ad3', percentage: 100 }
+                    ]
+                }
+            },
+            computed: {
+                // 计算已解答进度百分比
+                solvedPercentage() {
+                    if (this.totalQuestions === 0) return 0;
+                    let val = (this.userInfo.pass_count / this.totalQuestions) * 100;
+                    return val > 100 ? 100 : parseFloat(val.toFixed(1));
+                },
+                // 计算提交通过率
+                passRate() {
+                    if (this.userInfo.submit_count === 0) return 0;
+                    let val = (this.userInfo.pass_count / this.userInfo.submit_count) * 100;
+                    return val > 100 ? 100 : parseFloat(val.toFixed(1));
+                }
+            },
+            created() {
+                // 鉴权拦截
+                if (!this.token) {
+                    this.$message.error('请先登录！');
+                    setTimeout(() => { window.location.href = '/auth.html'; }, 1000);
+                    return;
+                }
+                this.fetchProfileData();
+            },
+            methods: {
+                triggerAddModal() {
+                    if (typeof window.openAddModal === 'function') {
+                        window.openAddModal();
+                    } else {
+                        alert("当前页面缺少录题弹窗代码！");
+                    }
+                },
+                getAuthHeaders() {
+                    return { headers: { 'Authorization': this.token } };
+                },
+                fetchProfileData() {
+                    axios.get('/api/user/profile', this.getAuthHeaders())
+                        .then(res => {
+                            if (res.data.status === 0) {
+                                let d = res.data.data;
+                                this.userInfo.username = d.username;
+                                this.userInfo.role = d.role;
+                                this.userInfo.register_time = d.register_time;
+                                this.userInfo.pass_count = d.pass_count;
+                                this.userInfo.submit_count = d.submit_count;
+                                this.totalQuestions = d.total_questions;
+                                this.attemptingList = d.attempting_list || [];
+                                this.classList = d.class_list || [];
+                            } else {
+                                this.$message.error(res.data.reason || '获取数据失败，请重新登录');
+                            }
+                        })
+                        .catch(err => {
+                            this.$message.error('网络异常，请检查后端服务是否启动');
+                        });
+                },
+                updateName() {
+                    if (!this.newName.trim()) {
+                        this.$message.warning('新名称不能为空');
+                        return;
+                    }
+                    this.btnLoading = true;
+                    axios.post('/api/user/update_name', { new_name: this.newName }, this.getAuthHeaders())
+                        .then(res => {
+                            if (res.data.status === 0) {
+                                this.$message.success(res.data.reason);
+                                // 重大逻辑点：必须用新下发的 Token 覆盖旧的
+                                this.token = res.data.new_token;
+                                localStorage.setItem('oj_token', this.token);
+                                this.userInfo.username = this.newName;
+                                this.nameDialogVisible = false;
+                            } else {
+                                this.$message.error(res.data.reason);
+                            }
+                        }).finally(() => { this.btnLoading = false; });
+                },
+                updatePwd() {
+                    if (!this.pwdForm.old_pwd || !this.pwdForm.new_pwd) {
+                        this.$message.warning('密码不能为空');
+                        return;
+                    }
+                    this.btnLoading = true;
+                    axios.post('/api/user/update_pwd', this.pwdForm, this.getAuthHeaders())
+                        .then(res => {
+                            if (res.data.status === 0) {
+                                this.$message.success(res.data.reason);
+                                this.pwdDialogVisible = false;
+                                // 密码改了，强制清除 Token 重新登录
+                                localStorage.removeItem('oj_token');
+                                setTimeout(() => { window.location.href = '/auth.html'; }, 1500);
+                            } else {
+                                this.$message.error(res.data.reason);
+                            }
+                        }).finally(() => { this.btnLoading = false; });
+                },
+                handleCommand(command) {
+                    if (command === 'logout') {
+                        localStorage.removeItem('oj_token');
+                        this.$message.success('已退出登录');
+                        setTimeout(() => { window.location.href = '/auth.html'; }, 1000);
+                    } else if (command === 'profile') {
+                        // 当前就在个人中心
+                    }
+                },
+                goToQuestion(number) {
+                    window.location.href = '/question/' + number;
+                },
+                goToClass(classId) {
+                    // 点击跳转到班级页并带上 ID 参数（前端通过URL获取并自动打开对应班级）
+                    window.location.href = '/classes.html?id=' + classId;
+                },
+                getDifficultyColor(star) {
+                    if (star === '简单') return 'success';
+                    if (star === '中等') return 'warning';
+                    if (star === '困难') return 'danger';
+                    return 'info';
+                }
+            }
+        })
+    </script>
+
+    <div id="modal_overlay" class="modal-overlay" onclick="closeAddModal()"></div>
+
+    <div id="add_question_modal" class="modal-large">
+        <span onclick="closeAddModal()" style="position:absolute; top:15px; right:20px; font-size:26px; cursor:pointer; color:#aaa; transition: 0.3s;" onmouseover="this.style.color='#333'" onmouseout="this.style.color='#aaa'">&times;</span>
+        <h2 style="margin-bottom: 20px; color: #333; border-left: 4px solid #f59e0b; padding-left: 10px;">管理员录题系统</h2>
+        
+        <div style="display: flex; gap: 15px;">
+            <div class="form-group" style="flex: 2;">
+                <label>题目标题 (不可重复)</label>
+                <input type="text" id="add_title" class="modern-input" placeholder="例如：两数之和">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>难度</label>
+                <select id="add_star" class="modern-input" style="cursor: pointer;">
+                    <option value="简单">简单</option>
+                    <option value="中等" selected>中等</option>
+                    <option value="困难">困难</option>
+                </select>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 15px;">
+            <div class="form-group" style="flex: 1;">
+                <label>时间限制 (秒)</label>
+                <input type="number" id="add_cpu" class="modern-input" value="1" min="1">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>空间限制 (KB)</label>
+                <input type="number" id="add_mem" class="modern-input" value="50000" min="1024">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>题目描述 (支持文本/简单排版)</label>
+            <textarea id="add_desc" class="modern-input" rows="4" placeholder="请输入题目要求、输入输出格式等..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>预设代码 (Header) - 展现给用户的初始代码</label>
+            <textarea id="add_header" class="code-input" rows="4" placeholder="#include <iostream>&#10;using namespace std;&#10;&#10;class Solution {&#10;public:&#10;    // 在此编写你的代码&#10;};"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>测试用例 (Tail) - 隐藏在后台用于校验的 main 函数</label>
+            <textarea id="add_tail" class="code-input" rows="6" placeholder="int main() {&#10;    Solution s;&#10;    // 添加 assert 或 if 校验输出结果&#10;    return 0;&#10;}"></textarea>
+        </div>
+        
+        <button onclick="submitNewQuestion()" class="modern-btn btn-primary" style="background-color: #f59e0b;">确认操作</button>
+    </div>
+
+    <script>
+        // 为了方便在非 Vue 实例的方法中调用，直接使用 Vue.prototype.$message
+        const $msg = Vue.prototype.$message;
+
+        function openAddModal() {
+            let overlay = document.getElementById('modal_overlay');
+            if(overlay) overlay.style.display = 'block';
+            document.getElementById('add_question_modal').style.display = 'block';
+        }
+
+        function closeAddModal() {
+            let overlay = document.getElementById('modal_overlay');
+            if(overlay) overlay.style.display = 'none';
+            document.getElementById('add_question_modal').style.display = 'none';
+            
+            // 关闭时清空一下输入框
+            document.getElementById('add_title').value = '';
+            document.getElementById('add_desc').value = '';
+        }
+
+        function submitNewQuestion() {
+            let title = document.getElementById("add_title").value.trim();
+            let star = document.getElementById("add_star").value;
+            let desc = document.getElementById("add_desc").value.trim();
+            let header = document.getElementById("add_header").value.trim();
+            let tail = document.getElementById("add_tail").value.trim();
+            let cpu = document.getElementById("add_cpu").value;
+            let mem = document.getElementById("add_mem").value;
+
+            if (!title || !desc || !header || !tail) {
+                $msg.warning("请完整填写标题、描述及代码片段！"); 
+                return;
+            }
+
+            let token = localStorage.getItem("oj_token");
+
+            fetch('/admin/add_question', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': token
+                },
+                body: JSON.stringify({
+                    title: title, star: star, desc: desc, header: header, tail: tail,
+                    cpu_limit: parseInt(cpu), mem_limit: parseInt(mem)
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 0) {
+                    $msg.success("✅ 题目《" + title + "》录入成功！");
+                    closeAddModal();
+                } else {
+                    $msg.error("❌ 录入失败：" + data.reason);
+                }
+            })
+            .catch(error => { 
+                $msg.error("网络请求失败，请检查服务器连接"); 
+            });
+        }
+    </script>
+
+</body>
+
+</html>

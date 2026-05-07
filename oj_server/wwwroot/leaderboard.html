@@ -5,6 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>在线OJ - 排行榜</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
     <style>
         * {
             margin: 0px;
@@ -293,48 +296,77 @@
 
 <body>
     <div class="container">
-        <div class="navbar">
+        <div class="navbar" id="nav_app">
             <div class="nav-links">
                 <a href="/" style="font-size: 20px; font-weight: bold; color: #20b597;">灵犀OJ</a>
                 <a href="/all_questions">题库</a>
-                <a href="/leaderboard.html" style="color: #20b597;">排行榜</a>
-                <a href="/classes.html" id="nav_classes" style="display: none; color: #8b5cf6; font-weight: bold;">我的班级</a>
-                <a href="javascript:void(0);" id="admin_add_nav" onclick="openAddModal()"
-                    style="display: none; color: #f59e0b; font-weight: bold;">录入题目</a>
+                <a href="/leaderboard.html">排行榜</a>
+                <a href="/classes.html" v-if="isLoggedIn" style="color: #8b5cf6; font-weight: bold;">我的班级</a>
+                <a href="javascript:void(0);" v-if="userInfo.role === 1" @click="triggerAddModal" style="color: #f59e0b; font-weight: bold;">录入题目</a>
             </div>
-            <div>
-                <span id="user_info" style="color: #333; font-weight: bold; margin-right: 15px; display: none;"></span>
-                <a href="javascript:void(0);" onclick="logout()" id="logout_btn"
-                    style="display: none; color: #ef4444; text-decoration: none; font-weight: 500;">退出</a>
-                <a id="login_btn" href="/auth.html" onclick="openModal()"
+
+            <div style="display: flex; align-items: center;">
+                <a v-if="!isLoggedIn" href="/auth.html"
                     style="padding: 8px 20px; background: #20b597; color: white; border-radius: 20px; text-decoration: none; font-weight: bold;">登录
                     / 注册</a>
+
+                <div v-if="isLoggedIn">
+                    <el-dropdown @command="handleCommand">
+                        <span class="el-dropdown-link"
+                            style="cursor: pointer; font-weight: bold; color: #409EFF; font-size: 16px;">
+                            <span v-text="userInfo.username"></span> <i class="el-icon-arrow-down el-icon--right"></i>
+                        </span>
+                        <el-dropdown-menu slot="dropdown">
+                            <el-dropdown-item command="profile" icon="el-icon-user">个人中心</el-dropdown-item>
+                            <el-dropdown-item command="logout" divided
+                                icon="el-icon-switch-button">退出登录</el-dropdown-item>
+                        </el-dropdown-menu>
+                    </el-dropdown>
+                </div>
             </div>
         </div>
 
         <script>
-            (function() {
-                let username = localStorage.getItem("oj_username");
-                let token = localStorage.getItem("oj_token");
-                let role = localStorage.getItem("oj_role");
-
-                if (username && token) {
-                    document.getElementById("login_btn").style.display = "none";
-                    
-                    let userInfo = document.getElementById("user_info");
-                    userInfo.innerText = "欢迎，" + username;
-                    userInfo.style.display = "inline-block";
-                    
-                    document.getElementById("logout_btn").style.display = "inline-block";
-
-                    if (role == "1" || role === 1) {
-                        let adminNav = document.getElementById("admin_add_nav");
-                        if (adminNav) adminNav.style.display = "inline-block";
+            new Vue({
+                el: '#nav_app',
+                data: {
+                    isLoggedIn: false,
+                    userInfo: {
+                        username: '',
+                        role: 0
                     }
-                    let navClasses = document.getElementById("nav_classes");
-                    if (navClasses) navClasses.style.display = "inline-block";
+                },
+                created() {
+                    // 组件初始化时，从 localStorage 读取状态
+                    let username = localStorage.getItem("oj_username");
+                    let token = localStorage.getItem("oj_token");
+                    let role = localStorage.getItem("oj_role");
+
+                    if (username && token) {
+                        this.isLoggedIn = true;
+                        this.userInfo.username = username;
+                        // 将 role 转换为数字类型确保判断准确
+                        this.userInfo.role = parseInt(role) || 0;
+                    }
+                },
+                methods: {
+                    triggerAddModal() {
+                        if (typeof window.openAddModal === 'function') {
+                            window.openAddModal();
+                        } else {
+                            alert("当前页面缺少录题弹窗代码！");
+                        }
+                    },
+                    handleCommand(command) {
+                        if (command === 'logout') {
+                            // 直接调用 index.html 底部已有的原生 logout 函数
+                            if (typeof logout === 'function') logout();
+                        } else if (command === 'profile') {
+                            window.location.href = '/profile.html';
+                        }
+                    }
                 }
-            })();
+            });
         </script>
 
         <div class="board_list">
@@ -388,12 +420,8 @@
     </div>
 
     <div id="add_question_modal" class="modal-large">
-        <span onclick="closeAddModal()"
-            style="position:absolute; top:15px; right:20px; font-size:26px; cursor:pointer; color:#aaa; transition: 0.3s;"
-            onmouseover="this.style.color='#333'" onmouseout="this.style.color='#aaa'">&times;</span>
-
+        <span onclick="closeAddModal()" style="position:absolute; top:15px; right:20px; font-size:26px; cursor:pointer; color:#aaa; transition: 0.3s;" onmouseover="this.style.color='#333'" onmouseout="this.style.color='#aaa'">&times;</span>
         <h2 style="margin-bottom: 20px; color: #333; border-left: 4px solid #f59e0b; padding-left: 10px;">管理员录题系统</h2>
-
         <div style="display: flex; gap: 15px;">
             <div class="form-group" style="flex: 2;">
                 <label>题目标题 (不可重复)</label>
@@ -408,7 +436,6 @@
                 </select>
             </div>
         </div>
-
         <div style="display: flex; gap: 15px;">
             <div class="form-group" style="flex: 1;">
                 <label>时间限制 (秒)</label>
@@ -419,26 +446,20 @@
                 <input type="number" id="add_mem" class="modern-input" value="50000" min="1024">
             </div>
         </div>
-
         <div class="form-group">
             <label>题目描述 (支持文本/简单排版)</label>
             <textarea id="add_desc" class="modern-input" rows="4" placeholder="请输入题目要求、输入输出格式等..."></textarea>
         </div>
-
         <div class="form-group">
             <label>预设代码 (Header) - 展现给用户的初始代码</label>
-            <textarea id="add_header" class="code-input" rows="4"
-                placeholder="#include <iostream>\nusing namespace std;\n\nclass Solution {\npublic:\n    // 在此编写你的代码\n};"></textarea>
+            <textarea id="add_header" class="code-input" rows="4" placeholder="#include <iostream>&#10;using namespace std;&#10;&#10;class Solution {&#10;public:&#10;    // 在此编写你的代码&#10;};"></textarea>
         </div>
 
         <div class="form-group">
             <label>测试用例 (Tail) - 隐藏在后台用于校验的 main 函数</label>
-            <textarea id="add_tail" class="code-input" rows="6"
-                placeholder="int main() {\n    Solution s;\n    // 添加 assert 或 if 校验输出结果\n    return 0;\n}"></textarea>
+            <textarea id="add_tail" class="code-input" rows="6" placeholder="int main() {&#10;    Solution s;&#10;    // 添加 assert 或 if 校验输出结果&#10;    return 0;&#10;}"></textarea>
         </div>
-
-        <button onclick="submitNewQuestion()" class="modern-btn btn-primary" style="background-color: #f59e0b;">确 认 录
-            入</button>
+        <button onclick="submitNewQuestion()" class="modern-btn btn-primary" style="background-color: #f59e0b;">确认操作</button>
     </div>
 
     <script>
@@ -522,32 +543,6 @@
                     document.getElementById("board_body").innerHTML = `<tr><td colspan="5" style="color: #ef4444;">获取数据失败，请检查网络或后端服务。</td></tr>`;
                 });
         }
-
-        // 页面加载时的状态渲染
-        // window.onload = function () {
-        //     let username = localStorage.getItem("oj_username");
-        //     let token = localStorage.getItem("oj_token");
-        //     let role = localStorage.getItem("oj_role");
-
-        //     if (username && token) {
-        //         // 如果已登录，隐藏登录按钮，显示欢迎信息和退出按钮
-        //         document.getElementById("login_btn").style.display = "none";
-        //         document.getElementById("user_info").innerText = "欢迎，" + username;
-        //         document.getElementById("user_info").style.display = "inline-block";
-        //         document.getElementById("logout_btn").style.display = "inline-block";
-
-        //         if (role == "1" || role === 1) {
-        //             document.getElementById("admin_add_nav").style.display = "inline-block";
-        //         }
-
-        //         let navClasses = document.getElementById("nav_classes");
-        //         if (navClasses) {
-        //             navClasses.style.display = "inline-block";
-        //         }
-        //     }
-
-        //     fetchLeaderboardData();
-        // };
 
         window.onload = function () {
             fetchLeaderboardData();

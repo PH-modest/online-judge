@@ -217,6 +217,77 @@ namespace ns_model
             return true;
         }
 
+        // 1. 获取用户个人的统计数据
+        bool GetUserStats(int user_id, std::string* username, int* role, std::string* reg_time, int* pass_count, int* submit_count)
+        {
+            std::string sql = "SELECT username, role, register_time, pass_count, submit_count FROM oj_users WHERE id = " + std::to_string(user_id);
+            bool ret = false;
+            if (0 == mysql_query(_conn, sql.c_str())) {
+                MYSQL_RES *res = mysql_store_result(_conn);
+                if (res && mysql_num_rows(res) > 0) {
+                    MYSQL_ROW row = mysql_fetch_row(res);
+                    *username = row[0];
+                    *role = atoi(row[1]);
+                    *reg_time = row[2];
+                    *pass_count = row[3] ? atoi(row[3]) : 0;
+                    *submit_count = row[4] ? atoi(row[4]) : 0;
+                    ret = true;
+                }
+                if(res) mysql_free_result(res);
+            }
+            return ret;
+        }
+
+        //  修改用户名
+        bool UpdateUsername(int user_id, const std::string& new_name, std::string* reason)
+        {
+            // 查重：防止和别人重名
+            std::string check_sql = "SELECT id FROM oj_users WHERE username = '" + new_name + "'";
+            mysql_query(_conn, check_sql.c_str());
+            MYSQL_RES *res = mysql_store_result(_conn);
+            if (res && mysql_num_rows(res) > 0) {
+                *reason = "用户名已存在，请换一个试试";
+                mysql_free_result(res);
+                return false;
+            }
+            if(res) mysql_free_result(res);
+
+            std::string sql = "UPDATE oj_users SET username = '" + new_name + "' WHERE id = " + std::to_string(user_id);
+            if (mysql_query(_conn, sql.c_str()) == 0) {
+                *reason = "修改成功"; return true;
+            } else {
+                *reason = "数据库操作失败"; return false;
+            }
+        }
+
+        // 修改密码
+        bool UpdatePassword(int user_id, const std::string& old_pwd, const std::string& new_pwd, std::string* reason)
+        {
+            // 验证旧密码是否正确
+            std::string check_sql = "SELECT password FROM oj_users WHERE id = " + std::to_string(user_id);
+            mysql_query(_conn, check_sql.c_str());
+            MYSQL_RES *res = mysql_store_result(_conn);
+            if (res && mysql_num_rows(res) > 0) {
+                std::string db_pwd = mysql_fetch_row(res)[0];
+                mysql_free_result(res);
+                if (db_pwd != old_pwd) {
+                    *reason = "原密码错误";
+                    return false;
+                }
+            } else {
+                if(res) mysql_free_result(res);
+                *reason = "用户不存在";
+                return false;
+            }
+
+            std::string sql = "UPDATE oj_users SET password = '" + new_pwd + "' WHERE id = " + std::to_string(user_id);
+            if (mysql_query(_conn, sql.c_str()) == 0) {
+                *reason = "密码修改成功，请重新登录"; return true;
+            } else {
+                *reason = "数据库更新失败"; return false;
+            }
+        }
+
     private:
         MYSQL *_conn;
 

@@ -5,13 +5,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>灵犀OJ</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
     <style>
         * {
             margin: 0px;
             padding: 0px;
         }
 
-        html, body {
+        html,
+        body {
             width: 100%;
             height: 100%;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -46,7 +50,7 @@
             color: #20b597;
         }
 
-        /* ====== 新增：现代化首页布局 ====== */
+        /* 现代化首页布局 */
         .main-layout {
             max-width: 1100px;
             margin: 40px auto;
@@ -110,6 +114,7 @@
             padding-bottom: 12px;
             line-height: 1.5;
         }
+
         .announcement-list li:last-child {
             border-bottom: none;
             margin-bottom: 0;
@@ -160,14 +165,15 @@
             font-size: 18px;
             font-weight: bold;
             transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(32,181,151,0.2);
+            box-shadow: 0 4px 15px rgba(32, 181, 151, 0.2);
         }
 
         .start-btn:hover {
             background: #1aa085;
             transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(32,181,151,0.35);
+            box-shadow: 0 6px 20px rgba(32, 181, 151, 0.35);
         }
+
         /* ====== 布局样式结束 ====== */
 
         /* 现代化弹窗遮罩层 */
@@ -225,91 +231,203 @@
             transition: all 0.3s;
         }
 
-        .btn-primary { background-color: #20b597; color: white; }
-        .btn-primary:hover { background-color: #1aa085; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(26, 160, 133, 0.3); }
-        .btn-dark { background-color: #333; color: white; }
-        .btn-dark:hover { background-color: #222; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); }
+        .btn-primary {
+            background-color: #20b597;
+            color: white;
+        }
 
-        .auth-switch { text-align: center; margin-top: 20px; font-size: 14px; color: #666; }
-        .auth-switch a { color: #20b597; text-decoration: none; font-weight: bold; cursor: pointer; }
-        .auth-switch a:hover { text-decoration: underline; }
+        .btn-primary:hover {
+            background-color: #1aa085;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(26, 160, 133, 0.3);
+        }
+
+        .btn-dark {
+            background-color: #333;
+            color: white;
+        }
+
+        .btn-dark:hover {
+            background-color: #222;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .auth-switch {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .auth-switch a {
+            color: #20b597;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .auth-switch a:hover {
+            text-decoration: underline;
+        }
 
         /* Toast 提示框系统 */
-        #toast_container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
-        .toast {
-            min-width: 250px; padding: 15px 20px; margin-bottom: 15px; border-radius: 6px; color: #fff; font-size: 16px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); opacity: 0; transform: translateX(100%);
-            transition: opacity 0.3s, transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            display: flex; align-items: center; justify-content: space-between;
+        #toast_container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
         }
-        .toast.show { opacity: 1; transform: translateX(0); }
-        .toast-success { background-color: #10b981; }
-        .toast-error { background-color: #ef4444; }
-        .toast-warning { background-color: #f59e0b; }
+
+        .toast {
+            min-width: 250px;
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 16px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            opacity: 0;
+            transform: translateX(100%);
+            transition: opacity 0.3s, transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .toast-success {
+            background-color: #10b981;
+        }
+
+        .toast-error {
+            background-color: #ef4444;
+        }
+
+        .toast-warning {
+            background-color: #f59e0b;
+        }
 
         .modal-large {
-            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: white; padding: 30px 40px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            z-index: 1000; width: 650px; max-height: 85vh; overflow-y: auto;
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            width: 650px;
+            max-height: 85vh;
+            overflow-y: auto;
         }
+
         .code-input {
-            width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #ddd; border-radius: 6px;
-            font-family: Consolas, 'Courier New', monospace; font-size: 14px; outline: none;
-            background-color: #282c34; color: #abb2bf; resize: vertical;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: Consolas, 'Courier New', monospace;
+            font-size: 14px;
+            outline: none;
+            background-color: #282c34;
+            color: #abb2bf;
+            resize: vertical;
         }
-        .code-input:focus { border-color: #20b597; }
+
+        .code-input:focus {
+            border-color: #20b597;
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <div class="navbar">
+        <div class="navbar" id="nav_app">
             <div class="nav-links">
                 <a href="/" style="font-size: 20px; font-weight: bold; color: #20b597;">灵犀OJ</a>
                 <a href="/all_questions">题库</a>
                 <a href="/leaderboard.html">排行榜</a>
-                <a href="/classes.html" id="nav_classes" style="display: none; color: #8b5cf6; font-weight: bold;">我的班级</a>
-                <a href="javascript:void(0);" id="admin_add_nav" onclick="openAddModal()"
-                    style="display: none; color: #f59e0b; font-weight: bold;">录入题目</a>
+                <a href="/classes.html" v-if="isLoggedIn" style="color: #8b5cf6; font-weight: bold;">我的班级</a>
+                <a href="javascript:void(0);" v-if="userInfo.role === 1" @click="triggerAddModal" style="color: #f59e0b; font-weight: bold;">录入题目</a>
             </div>
-            <div>
-                <span id="user_info" href="/profile.html" style="color: #333; font-weight: bold; margin-right: 15px; display: none;"></span>
-                <a href="javascript:void(0);" onclick="logout()" id="logout_btn"
-                    style="display: none; color: #ef4444; text-decoration: none; font-weight: 500;">退出</a>
-                <a id="login_btn" href="/auth.html"
-                    style="padding: 8px 20px; background: #20b597; color: white; border-radius: 20px; text-decoration: none; font-weight: bold;">登录 / 注册</a>
+
+            <div style="display: flex; align-items: center;">
+                <a v-if="!isLoggedIn" href="/auth.html"
+                    style="padding: 8px 20px; background: #20b597; color: white; border-radius: 20px; text-decoration: none; font-weight: bold;">登录
+                    / 注册</a>
+
+                <div v-if="isLoggedIn">
+                    <el-dropdown @command="handleCommand">
+                        <span class="el-dropdown-link"
+                            style="cursor: pointer; font-weight: bold; color: #409EFF; font-size: 16px;">
+                            <span v-text="userInfo.username"></span> <i class="el-icon-arrow-down el-icon--right"></i>
+                        </span>
+                        <el-dropdown-menu slot="dropdown">
+                            <el-dropdown-item command="profile" icon="el-icon-user">个人中心</el-dropdown-item>
+                            <el-dropdown-item command="logout" divided
+                                icon="el-icon-switch-button">退出登录</el-dropdown-item>
+                        </el-dropdown-menu>
+                    </el-dropdown>
+                </div>
             </div>
         </div>
 
         <script>
-            (function() {
-                let username = localStorage.getItem("oj_username");
-                let token = localStorage.getItem("oj_token");
-                let role = localStorage.getItem("oj_role");
-
-                if (username && token) {
-                    document.getElementById("login_btn").style.display = "none";
-                    
-                    let userInfo = document.getElementById("user_info");
-                    userInfo.innerText = "欢迎，" + username;
-                    userInfo.style.display = "inline-block";
-                    
-                    document.getElementById("logout_btn").style.display = "inline-block";
-
-                    if (role == "1" || role === 1) {
-                        let adminNav = document.getElementById("admin_add_nav");
-                        if (adminNav) adminNav.style.display = "inline-block";
+            new Vue({
+                el: '#nav_app',
+                data: {
+                    isLoggedIn: false,
+                    userInfo: {
+                        username: '',
+                        role: 0
                     }
-                    let navClasses = document.getElementById("nav_classes");
-                    if (navClasses) navClasses.style.display = "inline-block";
+                },
+                created() {
+                    // 组件初始化时，从 localStorage 读取状态
+                    let username = localStorage.getItem("oj_username");
+                    let token = localStorage.getItem("oj_token");
+                    let role = localStorage.getItem("oj_role");
+
+                    if (username && token) {
+                        this.isLoggedIn = true;
+                        this.userInfo.username = username;
+                        // 将 role 转换为数字类型确保判断准确
+                        this.userInfo.role = parseInt(role) || 0;
+                    }
+                },
+                methods: {
+                    triggerAddModal() {
+                        if (typeof window.openAddModal === 'function') {
+                            window.openAddModal();
+                        } else {
+                            alert("当前页面缺少录题弹窗代码！");
+                        }
+                    },
+                    handleCommand(command) {
+                        if (command === 'logout') {
+                            // 直接调用 index.html 底部已有的原生 logout 函数
+                            if (typeof logout === 'function') logout();
+                        } else if (command === 'profile') {
+                            window.location.href = '/profile.html';
+                        }
+                    }
                 }
-            })();
+            });
         </script>
-        
+
         <div class="main-layout">
             <!-- https://api.dicebear.com/7.x/pixel-art/svg?seed=oj-platform -->
             <div class="hero-section">
-                <img src="https://api.dicebear.com/7.x/shapes/svg?seed=oj-platform&backgroundColor=20b597" alt="Logo" style="width: 150px; margin-bottom: 25px;">
+                <img src="https://api.dicebear.com/7.x/shapes/svg?seed=oj-platform&backgroundColor=20b597" alt="Logo"
+                    style="width: 150px; margin-bottom: 25px;">
                 <h1 style="color: #333; font-size: 34px; margin-bottom: 15px;">欢迎来到 灵犀OJ</h1>
                 <p style="color: #666; font-size: 16px; line-height: 1.8; margin-bottom: 25px; max-width: 80%;">
                     专为编程学习者打造的现代化在线判题系统。<br>
@@ -319,7 +437,7 @@
             </div>
 
             <div class="sidebar">
-                
+
                 <div class="card">
                     <div class="card-title">📌 系统公告</div>
                     <ul class="announcement-list">
@@ -334,11 +452,11 @@
                     <div class="card-title">🔗 实用工具与链接</div>
                     <div class="link-list">
                         <a href="https://zh.cppreference.com/" target="_blank">C++ 参考手册</a>
-                        <a href="https://github.com/" target="_blank">GitHub</a>                        
+                        <a href="https://github.com/" target="_blank">GitHub</a>
                         <a href="https://leetcode.cn/" target="_blank">LeetCode</a>
                         <a href="https://www.nowcoder.com/" target="_blank">牛客网</a>
                         <a href="https://visualgo.net/zh" target="_blank">VisuAlgo 算法动图</a>
-                        
+
                     </div>
                 </div>
 
@@ -348,11 +466,11 @@
 
     <div id="toast_container"></div>
 
+    <div id="modal_overlay" class="modal-overlay" onclick="closeAddModal()"></div>
+
     <div id="add_question_modal" class="modal-large">
         <span onclick="closeAddModal()" style="position:absolute; top:15px; right:20px; font-size:26px; cursor:pointer; color:#aaa; transition: 0.3s;" onmouseover="this.style.color='#333'" onmouseout="this.style.color='#aaa'">&times;</span>
-
         <h2 style="margin-bottom: 20px; color: #333; border-left: 4px solid #f59e0b; padding-left: 10px;">管理员录题系统</h2>
-
         <div style="display: flex; gap: 15px;">
             <div class="form-group" style="flex: 2;">
                 <label>题目标题 (不可重复)</label>
@@ -367,7 +485,6 @@
                 </select>
             </div>
         </div>
-
         <div style="display: flex; gap: 15px;">
             <div class="form-group" style="flex: 1;">
                 <label>时间限制 (秒)</label>
@@ -378,23 +495,20 @@
                 <input type="number" id="add_mem" class="modern-input" value="50000" min="1024">
             </div>
         </div>
-
         <div class="form-group">
             <label>题目描述 (支持文本/简单排版)</label>
             <textarea id="add_desc" class="modern-input" rows="4" placeholder="请输入题目要求、输入输出格式等..."></textarea>
         </div>
-
         <div class="form-group">
             <label>预设代码 (Header) - 展现给用户的初始代码</label>
-            <textarea id="add_header" class="code-input" rows="6" placeholder="#include <iostream>&#10;using namespace std;&#10;&#10;class Solution {&#10;public:&#10;    // 在此编写你的代码&#10;};"></textarea>
+            <textarea id="add_header" class="code-input" rows="4" placeholder="#include <iostream>&#10;using namespace std;&#10;&#10;class Solution {&#10;public:&#10;    // 在此编写你的代码&#10;};"></textarea>
         </div>
 
         <div class="form-group">
             <label>测试用例 (Tail) - 隐藏在后台用于校验的 main 函数</label>
-            <textarea id="add_tail" class="code-input" rows="8" placeholder="int main() {&#10;    Solution s;&#10;    // 添加 assert 或 if 校验输出结果&#10;    return 0;&#10;}"></textarea>
+            <textarea id="add_tail" class="code-input" rows="6" placeholder="int main() {&#10;    Solution s;&#10;    // 添加 assert 或 if 校验输出结果&#10;    return 0;&#10;}"></textarea>
         </div>
-
-        <button onclick="submitNewQuestion()" class="modern-btn btn-primary" style="background-color: #f59e0b;">确 认 录 入</button>
+        <button onclick="submitNewQuestion()" class="modern-btn btn-primary" style="background-color: #f59e0b;">确认操作</button>
     </div>
 
     <script>
@@ -409,7 +523,7 @@
             setTimeout(() => toast.classList.add('show'), 10);
             setTimeout(() => {
                 toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 300); 
+                setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
 
@@ -420,25 +534,6 @@
             showToast("已退出登录", "success");
             setTimeout(() => { location.reload(); }, 1000);
         }
-
-        // window.onload = function () {
-        //     let username = localStorage.getItem("oj_username");
-        //     let token = localStorage.getItem("oj_token");
-        //     let role = localStorage.getItem("oj_role");
-
-        //     if (username && token) {
-        //         document.getElementById("login_btn").style.display = "none";
-        //         document.getElementById("user_info").innerText = "欢迎，" + username;
-        //         document.getElementById("user_info").style.display = "inline-block";
-        //         document.getElementById("logout_btn").style.display = "inline-block";
-
-        //         if (role == "1" || role === 1) {
-        //             document.getElementById("admin_add_nav").style.display = "inline-block";
-        //         }
-        //         let navClasses = document.getElementById("nav_classes");
-        //         if (navClasses) { navClasses.style.display = "inline-block"; }
-        //     }
-        // };
 
         function openAddModal() {
             document.getElementById('modal_overlay').style.display = 'block';
@@ -467,7 +562,7 @@
             if (!title || !desc || !header || !tail) {
                 showToast("请完整填写标题、描述及代码片段！", "warning"); return;
             }
-            
+
             // 为了防止你在别的页面合并时出错，如果这页不涉及修改逻辑，我们恢复原本的录入请求
             let bodyData = {
                 title: title, star: star, desc: desc, header: header, tail: tail,
@@ -482,17 +577,17 @@
                 },
                 body: JSON.stringify(bodyData)
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 0) {
-                    showToast("✅ 题目《" + title + "》录入成功！", "success");
-                    closeAddModal();
-                } else {
-                    showToast("❌ 录入失败：" + data.reason, "error");
-                    if (data.status === -2) setTimeout(logout, 1500);
-                }
-            })
-            .catch(error => { showToast("网络请求失败，请检查服务器连接", "error"); });
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 0) {
+                        showToast("✅ 题目《" + title + "》录入成功！", "success");
+                        closeAddModal();
+                    } else {
+                        showToast("❌ 录入失败：" + data.reason, "error");
+                        if (data.status === -2) setTimeout(logout, 1500);
+                    }
+                })
+                .catch(error => { showToast("网络请求失败，请检查服务器连接", "error"); });
         }
     </script>
 </body>
