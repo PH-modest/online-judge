@@ -281,11 +281,13 @@ namespace ns_control
             }
         }
 
+        // 添加
         bool AddQuestion(const ns_model::Question &q)
         {
             return _model.InsertQuestion(q);
         }
 
+        // 查看题目详情
         bool Question(const std::string &number, std::string *html)
         {
             bool ret = true;
@@ -307,16 +309,16 @@ namespace ns_control
         void Judge(const std::string &number, const std::string in_json, std::string *out_json, int user_id = -1, int assignment_id = 0)
         {
             // LOG(DEBUG)<<in_json<<" \nnumber: "<<number<<"\n";
-            // 0. 根据题目编号，直接拿到对应的题目细节
+            // 根据题目编号，直接拿到对应的题目细节
             ns_model::Question q;
             _model.GetOneQuestion(number, &q);
 
-            // 1. in_json进行反序列化，得到题目的id、用户提交的代码、input
+            // in_json进行反序列化，得到题目的id、用户提交的代码、input
             Json::Reader reader;
             Json::Value in_value;
             reader.parse(in_json, in_value);
 
-            // 2. 重新拼接用户代码+测试用例代码，形成新的代码
+            // 重新拼接用户代码+测试用例代码，形成新的代码
             std::string code = in_value["code"].asString();
             Json::Value compile_value;
             compile_value["input"] = in_value["input"].asString();
@@ -326,7 +328,7 @@ namespace ns_control
             Json::FastWriter writer;
             std::string compile_string = writer.write(compile_value);
 
-            // 3. 选择负载最低的主机(差错处理)
+            // 选择负载最低的主机(差错处理)
             // 规则：一直选择，直到主机可用，否则，就是全部挂掉
             while (true)
             {
@@ -337,7 +339,7 @@ namespace ns_control
                     break;
                 }
 
-                // 4. 然后发起http请求，得到结果
+                // 然后发起http请求，得到结果
                 httplib::Client cli(m->_ip, m->_port);
                 m->IncLoad();
                 LOG(INFO) << "选择主机成功, 主机id: " << id << ", 详情: " << m->_ip << ":" << m->_port << ", 当前主机的负载是: " << m->Load() << "\n";
@@ -390,7 +392,7 @@ namespace ns_control
                                 }
                                 else
                                 {
-                                    // 极其严格的兜底：如果既没有报 WA 也没有报 AC，
+                                    // 如果既没有报 WA 也没有报 AC，
                                     // 说明用户可能把代码的主函数写崩了，或者完全没有任何有效输出
                                     status = -1;
                                     reason = "WA";
@@ -475,7 +477,7 @@ namespace ns_control
             return true;
         }
 
-        // 1. 生成 6 位随机的班级邀请码
+        // 生成 6 位随机的班级邀请码
         std::string GenerateInviteCode()
         {
             const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -488,7 +490,7 @@ namespace ns_control
             return code;
         }
 
-        // 2. 创建班级（匹配你 oj_server.cc 中的调用）
+        // 创建班级
         bool CreateClass(int user_id, const std::string &name, std::string *join_code)
         {
             ns_model::ClassInfo c;
@@ -504,13 +506,13 @@ namespace ns_control
             return false;
         }
 
-        // 3. 加入班级（匹配你 oj_server.cc 中的调用）
+        // 加入班级
         bool JoinClass(int user_id, const std::string &join_code, std::string *reason)
         {
             return _model.ApplyClass(user_id, join_code, reason);
         }
 
-        // 4. 创建题单及导入题目（匹配你 oj_server.cc 中的调用）
+        // 创建题单及导入题目
         bool CreateProblemSet(int user_id, int class_id, const std::string &title, const std::string &deadline,
                               const std::vector<int> &existing_qids, const std::vector<ns_model::Question> &new_qs,
                               std::string *reason)
@@ -520,11 +522,10 @@ namespace ns_control
             assign.title = title;
             assign.end_time = deadline;
 
-            // 核心设计：默认设为 0 (自由练习模式，关联历史AC记录)。
-            // 答辩亮点：如果前端有“是否作为严格考核”的勾选框，这里可以接受前端传参来变为 1。
+            // 默认设为 0 (自由练习模式，关联历史AC记录)。
             assign.type = 0;
 
-            // 第一步：在数据库中创建题单，并拿到题单 ID
+            // 在数据库中创建题单，并拿到题单 ID
             int assign_id = _model.CreateAssignmentAndGetId(assign);
             if (assign_id <= 0)
             {
@@ -532,27 +533,27 @@ namespace ns_control
                 return false;
             }
 
-            // 第二步：将“题库中已有的题目ID”加入到该题单的关联表中
+            // 将“题库中已有的题目ID”加入到该题单的关联表中
             for (int qid : existing_qids)
             {
                 _model.LinkAssignmentQuestion(assign_id, std::to_string(qid));
             }
 
-            // 第三步：如果是“完全新创建的题目”（老师边建题单边出新题）
-            for (const auto &q : new_qs)
-            {
-                if (_model.InsertQuestion(q))
-                {
-                    // 在真实的商业级应用中，这里需要根据 q.title 从 oj_questions 反查出刚插入的 number
-                    // 然后再执行 _model.LinkAssignmentQuestion(assign_id, number);
-                    // 这里咱们先保证整体业务流程的跑通，代码不报错。
-                }
-            }
+            // 如果是“完全新创建的题目”
+            // for (const auto &q : new_qs)
+            // {
+            //     if (_model.InsertQuestion(q))
+            //     {
+            //         // 在真实的商业级应用中，这里需要根据 q.title 从 oj_questions 反查出刚插入的 number
+            //         // 然后再执行 _model.LinkAssignmentQuestion(assign_id, number);
+            //         // 这里咱们先保证整体业务流程的跑通，代码不报错。
+            //     }
+            // }
 
             return true;
         }
 
-        // 5. 获取题单详情与用户完成状态
+        // 获取题单详情与用户完成状态
         bool GetAssignmentDetailWithStatus(int user_id, int assign_id, std::string *out_json)
         {
             ns_model::AssignmentInfo assign_info;
@@ -623,7 +624,7 @@ namespace ns_control
             return true;
         }
 
-        // 6. 检查是否逾期 (工具函数)
+        // 检查是否逾期 (工具函数)
         bool IsAssignmentOverdue(int assign_id)
         {
             ns_model::AssignmentInfo info;
@@ -709,7 +710,7 @@ namespace ns_control
             return _model.AuditClassMember(class_id, user_id, action);
         }
 
-        // 重写“发布题单”逻辑（这次我们加入前端传来的 type 和题目列表）
+        // 发布题单
         bool PublishAssignment(int class_id, const std::string &title, const std::string &deadline, int type, const std::vector<int> &qids, std::string *reason)
         {
             ns_model::AssignmentInfo assign;
@@ -787,11 +788,13 @@ namespace ns_control
             return _model.DeleteQuestion(number);
         }
 
+        // 移除班级
         bool RemoveClass(int class_id, int user_id, std::string *reason)
         {
             return _model.RemoveClass(class_id, user_id, reason);
         }
 
+        // 退出班级
         bool LeaveClass(int class_id, int user_id, std::string *reason)
         {
             return _model.QuitClass(class_id, user_id, reason);

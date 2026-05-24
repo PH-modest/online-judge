@@ -156,34 +156,35 @@ namespace ns_model
             return true;
         }
 
-        bool GetAllQuestions(std::vector<Question> *out, const std::string& star = "", const std::string& keyword = "")
+        bool GetAllQuestions(std::vector<Question> *out, const std::string &star = "", const std::string &keyword = "")
         {
             // 使用 WHERE 1=1 方便后续灵活拼接 AND 条件
             std::string sql = "SELECT * FROM " + oj_questions + " WHERE 1=1";
-            
-            if(star == "简单" || star == "中等" || star == "困难")
+
+            if (star == "简单" || star == "中等" || star == "困难")
             {
                 sql += " AND star='" + star + "'";
             }
-            
-            if(!keyword.empty())
+
+            if (!keyword.empty())
             {
                 MYSQL *my = mysql_init(nullptr);
-                if (nullptr != mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0)) {
+                if (nullptr != mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0))
+                {
                     mysql_set_character_set(my, "utf8");
                     char *esc_keyword = new char[keyword.length() * 2 + 1];
                     mysql_real_escape_string(my, esc_keyword, keyword.c_str(), keyword.length());
-                    
+
                     sql += " AND (title LIKE '%";
                     sql += esc_keyword;
                     sql += "%' OR number LIKE '%";
                     sql += esc_keyword;
                     sql += "%')";
-                    
+
                     delete[] esc_keyword;
                     mysql_close(my);
                 }
-            }            
+            }
             return QueryMySql(sql, out);
         }
 
@@ -243,6 +244,19 @@ namespace ns_model
                      user_id, number.c_str(), state, state);
 
             mysql_query(my, sql);
+
+            char sync_sql[1024];
+            snprintf(sync_sql, sizeof(sync_sql),
+                     "UPDATE oj_users "
+                     "SET pass_count = ("
+                     "    SELECT COUNT(*) FROM oj_user_question_status "
+                     "    WHERE user_id = %d AND state = 1"
+                     ") "
+                     "WHERE id = %d",
+                     user_id, user_id);
+
+            mysql_query(my, sync_sql);
+
             mysql_close(my);
             return true;
         }
@@ -309,7 +323,7 @@ namespace ns_model
                 if (res)
                 {
                     int rows = mysql_num_rows(res);
-                    mysql_free_result(res); // 记得释放结果集，防止内存泄漏
+                    mysql_free_result(res); // 释放结果集，防止内存泄漏
 
                     if (rows > 0) // 说明数据库里已经有这个标题了
                     {
@@ -327,7 +341,7 @@ namespace ns_model
                 }
             }
 
-            // 注意：desc 是 MySQL 的关键字，必须加反引号 `desc` 才能作为列名使用
+            // desc 是 MySQL 的关键字，必须加反引号 `desc` 才能作为列名使用
             std::string sql_query = "INSERT INTO oj_questions (title, star, `desc`, header, tail, cpu_limit, mem_limit) VALUES ('";
             sql_query += esc_title;
             sql_query += "', '";
@@ -448,7 +462,7 @@ namespace ns_model
             return true;
         }
 
-        // 1. 创建班级
+        // 创建班级
         bool CreateClass(const ClassInfo &c)
         {
             MYSQL *my = mysql_init(nullptr);
@@ -480,11 +494,12 @@ namespace ns_model
             return res == 0;
         }
 
-        // 2. 申请加入班级 
+        // 申请加入班级
         bool ApplyClass(int user_id, const std::string &invite_code, std::string *out_reason)
         {
             MYSQL *my = mysql_init(nullptr);
-            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0)) {
+            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0))
+            {
                 // 后端记录真实连接失败原因，前端模糊提示
                 LOG(WARNING) << "数据库连接失败: " << mysql_error(my) << "\n";
                 *out_reason = "系统繁忙，连接数据库异常，请稍后再试。";
@@ -494,7 +509,8 @@ namespace ns_model
 
             // 1. 通过邀请码查 class_id
             std::string sql1 = "SELECT id FROM oj_classes WHERE invite_code = '" + invite_code + "'";
-            if (0 != mysql_query(my, sql1.c_str())) {
+            if (0 != mysql_query(my, sql1.c_str()))
+            {
                 // 查询班级异常的后台记录
                 LOG(WARNING) << "查询班级失败: " << mysql_error(my) << " SQL: " << sql1 << "\n";
                 *out_reason = "查询班级异常，请联系管理员。";
@@ -503,8 +519,10 @@ namespace ns_model
             }
 
             MYSQL_RES *res = mysql_store_result(my);
-            if (!res || mysql_num_rows(res) == 0) {
-                if (res) mysql_free_result(res);
+            if (!res || mysql_num_rows(res) == 0)
+            {
+                if (res)
+                    mysql_free_result(res);
                 *out_reason = "加入失败，该班级邀请码不存在。";
                 mysql_close(my);
                 return false;
@@ -515,26 +533,32 @@ namespace ns_model
 
             // 2. 提前检查是否已经在班级中
             std::string check_sql = "SELECT status FROM oj_class_members WHERE class_id = " + class_id + " AND user_id = " + std::to_string(user_id);
-            if (0 == mysql_query(my, check_sql.c_str())) {
+            if (0 == mysql_query(my, check_sql.c_str()))
+            {
                 MYSQL_RES *check_res = mysql_store_result(my);
-                if (check_res && mysql_num_rows(check_res) > 0) {
+                if (check_res && mysql_num_rows(check_res) > 0)
+                {
                     MYSQL_ROW check_row = mysql_fetch_row(check_res);
                     int status = atoi(check_row[0]);
                     mysql_free_result(check_res);
                     mysql_close(my);
-                    
-                    if (status == 1) *out_reason = "您已经是该班级成员，无需重复申请！";
-                    else *out_reason = "您已提交过申请，正在等待老师审核！";
+
+                    if (status == 1)
+                        *out_reason = "您已经是该班级成员，无需重复申请！";
+                    else
+                        *out_reason = "您已提交过申请，正在等待老师审核！";
                     return false;
                 }
-                if (check_res) mysql_free_result(check_res);
+                if (check_res)
+                    mysql_free_result(check_res);
             }
 
             // 3. 正式插入申请记录
             std::string sql2 = "INSERT INTO oj_class_members (class_id, user_id, status) VALUES (" + class_id + ", " + std::to_string(user_id) + ", 0)";
-            if (0 != mysql_query(my, sql2.c_str())) {
+            if (0 != mysql_query(my, sql2.c_str()))
+            {
                 LOG(WARNING) << "用户ID [" << user_id << "] 申请加入班级ID [" << class_id << "] 失败, MySQL真实报错: " << mysql_error(my) << "\n";
-                
+
                 *out_reason = "系统繁忙，提交申请失败，请稍后再试。";
                 mysql_close(my);
                 return false;
@@ -545,7 +569,7 @@ namespace ns_model
             return true;
         }
 
-        // 3. 发布题单
+        // 发布题单
         bool CreateAssignment(const AssignmentInfo &assign)
         {
             MYSQL *my = mysql_init(nullptr);
@@ -570,7 +594,7 @@ namespace ns_model
             return res == 0;
         }
 
-        // 4. 获取题单详情信息 (为了判断是严格模式还是自由练习)
+        // 获取题单详情信息 (为了判断是严格模式还是自由练习)
         bool GetAssignmentInfo(int assign_id, AssignmentInfo *info)
         {
             MYSQL *my = mysql_init(nullptr);
@@ -943,8 +967,11 @@ namespace ns_model
             sql += " WHERE number=" + q.number;
 
             int res = mysql_query(my, sql.c_str());
-            
-            delete[] esc_title; delete[] esc_desc; delete[] esc_header; delete[] esc_tail;
+
+            delete[] esc_title;
+            delete[] esc_desc;
+            delete[] esc_header;
+            delete[] esc_tail;
             mysql_close(my);
             return res == 0;
         }
@@ -955,11 +982,11 @@ namespace ns_model
             MYSQL *my = mysql_init(nullptr);
             if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0))
                 return false;
-            
+
             // 简单执行删除语句
             std::string sql = "DELETE FROM oj_questions WHERE number = " + number;
             int res = mysql_query(my, sql.c_str());
-            
+
             mysql_close(my);
             return res == 0;
         }
@@ -968,7 +995,8 @@ namespace ns_model
         bool RemoveClass(int class_id, int user_id, std::string *out_reason)
         {
             MYSQL *my = mysql_init(nullptr);
-            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0)) {
+            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0))
+            {
                 LOG(WARNING) << "数据库连接失败\n";
                 *out_reason = "系统繁忙，请稍后再试。";
                 return false;
@@ -979,35 +1007,42 @@ namespace ns_model
             std::string check_sql = "SELECT creator_id FROM oj_classes WHERE id = " + std::to_string(class_id);
             mysql_query(my, check_sql.c_str());
             MYSQL_RES *res = mysql_store_result(my);
-            if (!res || mysql_num_rows(res) == 0) {
-                if (res) mysql_free_result(res);
+            if (!res || mysql_num_rows(res) == 0)
+            {
+                if (res)
+                    mysql_free_result(res);
                 *out_reason = "班级不存在。";
-                mysql_close(my); return false;
+                mysql_close(my);
+                return false;
             }
             int creator_id = atoi(mysql_fetch_row(res)[0]);
             mysql_free_result(res);
 
-            if (creator_id != user_id) {
+            if (creator_id != user_id)
+            {
                 *out_reason = "无权删除：您不是该班级的创建者。";
-                mysql_close(my); return false;
+                mysql_close(my);
+                return false;
             }
 
             // 2. 清理关联表 (级联删除)
             // 先删题单关联的题目，再删题单，再删成员，最后删班级
             std::string del_aq = "DELETE FROM oj_assignment_questions WHERE assignment_id IN (SELECT id FROM oj_assignments WHERE class_id = " + std::to_string(class_id) + ")";
-            std::string del_a  = "DELETE FROM oj_assignments WHERE class_id = " + std::to_string(class_id);
-            std::string del_m  = "DELETE FROM oj_class_members WHERE class_id = " + std::to_string(class_id);
-            std::string del_c  = "DELETE FROM oj_classes WHERE id = " + std::to_string(class_id);
+            std::string del_a = "DELETE FROM oj_assignments WHERE class_id = " + std::to_string(class_id);
+            std::string del_m = "DELETE FROM oj_class_members WHERE class_id = " + std::to_string(class_id);
+            std::string del_c = "DELETE FROM oj_classes WHERE id = " + std::to_string(class_id);
 
             mysql_query(my, del_aq.c_str());
             mysql_query(my, del_a.c_str());
             mysql_query(my, del_m.c_str());
             int ret = mysql_query(my, del_c.c_str());
 
-            if (ret != 0) {
+            if (ret != 0)
+            {
                 LOG(ERROR) << "删除班级失败: " << mysql_error(my) << "\n";
                 *out_reason = "数据库执行删除异常。";
-                mysql_close(my); return false;
+                mysql_close(my);
+                return false;
             }
 
             *out_reason = "班级已成功解散。";
@@ -1019,29 +1054,38 @@ namespace ns_model
         bool QuitClass(int class_id, int user_id, std::string *out_reason)
         {
             MYSQL *my = mysql_init(nullptr);
-            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0)) return false;
-            
+            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0))
+                return false;
+
             // 不能退出自己创建的班级（老师必须解散班级）
             std::string check_sql = "SELECT creator_id FROM oj_classes WHERE id = " + std::to_string(class_id);
             mysql_query(my, check_sql.c_str());
             MYSQL_RES *res = mysql_store_result(my);
-            if (res && mysql_num_rows(res) > 0) {
+            if (res && mysql_num_rows(res) > 0)
+            {
                 int creator_id = atoi(mysql_fetch_row(res)[0]);
                 mysql_free_result(res);
-                if (creator_id == user_id) {
+                if (creator_id == user_id)
+                {
                     *out_reason = "创建者无法直接退出班级，请选择删除班级。";
-                    mysql_close(my); return false;
+                    mysql_close(my);
+                    return false;
                 }
-            } else if (res) {
+            }
+            else if (res)
+            {
                 mysql_free_result(res);
             }
 
             std::string sql = "DELETE FROM oj_class_members WHERE class_id = " + std::to_string(class_id) + " AND user_id = " + std::to_string(user_id);
             int ret = mysql_query(my, sql.c_str());
-            
-            if (ret == 0) {
+
+            if (ret == 0)
+            {
                 *out_reason = "已成功退出该班级。";
-            } else {
+            }
+            else
+            {
                 *out_reason = "操作失败。";
             }
             mysql_close(my);
@@ -1052,18 +1096,17 @@ namespace ns_model
         bool GetAllQuestionsBrief(std::vector<Question> *q, const std::string &keyword = "")
         {
             MYSQL *my = mysql_init(nullptr);
-            if(nullptr == mysql_real_connect(my, host.c_str(),user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0))
+            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0))
                 return false;
             mysql_set_character_set(my, "utf8");
 
             std::string sql = "SELECT number, title, star FROM oj_questions";
 
-            if(!keyword.empty())
+            if (!keyword.empty())
             {
                 char *esc_keyword = new char[keyword.length() * 2 + 1];
                 mysql_real_escape_string(my, esc_keyword, keyword.c_str(), keyword.length());
 
-                // 修复了 WHRER 的拼写错误
                 sql += " WHERE title LIKE '%";
                 sql += esc_keyword;
                 sql += "%' OR number LIKE '%";
@@ -1075,11 +1118,11 @@ namespace ns_model
 
             sql += " ORDER BY number ASC";
 
-            if(0 == mysql_query(my, sql.c_str()))
+            if (0 == mysql_query(my, sql.c_str()))
             {
                 MYSQL_RES *res = mysql_store_result(my);
                 int rows = mysql_num_rows(res);
-                for(int i=0; i<rows; i++)
+                for (int i = 0; i < rows; i++)
                 {
                     MYSQL_ROW row = mysql_fetch_row(res);
                     Question tmp;
@@ -1098,7 +1141,8 @@ namespace ns_model
         int GetTotalQuestionCount()
         {
             MYSQL *my = mysql_init(nullptr);
-            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0)) return 0;
+            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0))
+                return 0;
             mysql_set_character_set(my, "utf8");
 
             int count = 0;
@@ -1120,13 +1164,15 @@ namespace ns_model
         bool GetAttemptingQuestions(int user_id, std::vector<Question> *qs)
         {
             MYSQL *my = mysql_init(nullptr);
-            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0)) return false;
+            if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0))
+                return false;
             mysql_set_character_set(my, "utf8");
 
             // 联表查询：查出用户状态为 0 (尝试中) 的题号和题目名称
             std::string sql = "SELECT q.number, q.title, q.star FROM oj_questions q "
                               "JOIN oj_user_question_status s ON q.number = s.question_number "
-                              "WHERE s.user_id = " + std::to_string(user_id) + " AND s.state = 0";
+                              "WHERE s.user_id = " +
+                              std::to_string(user_id) + " AND s.state = 0";
             if (0 == mysql_query(my, sql.c_str()))
             {
                 MYSQL_RES *res = mysql_store_result(my);
@@ -1137,7 +1183,7 @@ namespace ns_model
                     Question q;
                     q.number = row[0];
                     q.title = row[1];
-                    q.star = row[2]; 
+                    q.star = row[2];
                     qs->push_back(q);
                 }
                 mysql_free_result(res);

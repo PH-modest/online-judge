@@ -173,13 +173,13 @@ int main()
 
         rsp.set_content(html,"text/html;charset=utf-8"); });
 
-    // 用户提交代码，使用我们的判题功能
+    // 用户提交代码，使用判题功能
     svr.Post(R"(/judge/(\d+))", [&ctrl, &user_model](const Request &req, Response &rsp)
              {
         Json::Value rsp_json;
         Json::FastWriter writer;
 
-        // 1. 权限校验拦截器
+        // 权限校验拦截器
         if (!req.has_header("Authorization"))
         {
             rsp_json["status"] = -2;
@@ -200,8 +200,7 @@ int main()
             return;
         }
 
-
-        // 3. 正常判题逻辑
+        // 正常判题逻辑
         LOG(INFO) << "用户 [" << username << "] 正在提交题目判题请求...\n";
         std::string number = req.matches[1];
 
