@@ -98,7 +98,7 @@
             margin: 0;
         }
 
-        .container .part2 {
+        /*.container .part2 {
             width: 100%;
             display: flex;
             justify-content: space-between;
@@ -109,7 +109,7 @@
             border-top: 1px solid #eee;
         }
 
-        .container .part2 .result {
+         .container .part2 .result {
             flex: 1;
             margin-right: 20px;
         }
@@ -118,7 +118,57 @@
             display: flex;
             gap: 15px;
             flex-shrink: 0;
-        }
+        } */
+
+        .container .part2 {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 15px 20px;
+    box-sizing: border-box;
+    background-color: #fdfdfd;
+    border-top: 1px solid #eee;
+}
+
+.container .part2 .result {
+    flex: 1 1 auto;
+    width: calc(100% - 420px);
+    max-width: calc(100% - 420px);
+    min-width: 0;
+    margin-right: 20px;
+    overflow: hidden;
+}
+
+.container .part2 .action-buttons {
+    flex: 0 0 400px;
+    display: flex;
+    gap: 15px;
+    flex-shrink: 0;
+    justify-content: flex-end;
+}
+
+        .container .part2 .result .details-box {
+    background-color: #f8f9fa;
+    border-left: 5px solid #ccc;
+    padding: 15px;
+    margin-top: 10px;
+    border-radius: 4px;
+    max-height: 250px;
+    overflow-y: auto;
+    overflow-x: auto;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 16px;
+    line-height: 1.5;
+    color: #333;
+}
+
+.container .part2 .result .details-box pre {
+    margin: 0;
+    max-width: 100%;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
 
         .container .part2 .btn-submit {
             width: 120px;
@@ -181,7 +231,7 @@
 
         /* 橙色 TLE */
 
-        .details-box {
+        /* .details-box {
             background-color: #f8f9fa;
             border-left: 5px solid #ccc;
             padding: 15px;
@@ -193,6 +243,21 @@
             font-family: Consolas, "Courier New", monospace;
             font-size: 16px;
             line-height: 1.5;
+            color: #333;
+        } */
+
+        .details-box {
+            background-color: #f8f9fa;
+            border-left: 5px solid #ccc;
+            padding: 10px;
+            margin-top: 6px;
+            border-radius: 4px;
+            max-height: 55px;
+            overflow-y: auto;
+            overflow-x: auto;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 14px;
+            line-height: 1.4;
             color: #333;
         }
 
@@ -662,7 +727,8 @@
                 <a href="/all_questions">题库</a>
                 <a href="/leaderboard.html">排行榜</a>
                 <a href="/classes.html" v-if="isLoggedIn" style="color: #8b5cf6; font-weight: bold;">我的班级</a>
-                <a href="javascript:void(0);" v-if="userInfo.role === 1" @click="triggerAddModal" style="color: #f59e0b; font-weight: bold;">录入题目</a>
+                <a href="javascript:void(0);" v-if="userInfo.role === 1" @click="triggerAddModal"
+                    style="color: #f59e0b; font-weight: bold;">录入题目</a>
             </div>
 
             <div style="display: flex; align-items: center;">
@@ -811,7 +877,9 @@
     </div>
 
     <div id="add_question_modal" class="modal-large">
-        <span onclick="closeAddModal()" style="position:absolute; top:15px; right:20px; font-size:26px; cursor:pointer; color:#aaa; transition: 0.3s;" onmouseover="this.style.color='#333'" onmouseout="this.style.color='#aaa'">&times;</span>
+        <span onclick="closeAddModal()"
+            style="position:absolute; top:15px; right:20px; font-size:26px; cursor:pointer; color:#aaa; transition: 0.3s;"
+            onmouseover="this.style.color='#333'" onmouseout="this.style.color='#aaa'">&times;</span>
         <h2 style="margin-bottom: 20px; color: #333; border-left: 4px solid #f59e0b; padding-left: 10px;">管理员录题系统</h2>
         <div style="display: flex; gap: 15px;">
             <div class="form-group" style="flex: 2;">
@@ -843,14 +911,17 @@
         </div>
         <div class="form-group">
             <label>预设代码 (Header) - 展现给用户的初始代码</label>
-            <textarea id="add_header" class="code-input" rows="4" placeholder="#include <iostream>&#10;using namespace std;&#10;&#10;class Solution {&#10;public:&#10;    // 在此编写你的代码&#10;};"></textarea>
+            <textarea id="add_header" class="code-input" rows="4"
+                placeholder="#include <iostream>&#10;using namespace std;&#10;&#10;class Solution {&#10;public:&#10;    // 在此编写你的代码&#10;};"></textarea>
         </div>
 
         <div class="form-group">
             <label>测试用例 (Tail) - 隐藏在后台用于校验的 main 函数</label>
-            <textarea id="add_tail" class="code-input" rows="6" placeholder="int main() {&#10;    Solution s;&#10;    // 添加 assert 或 if 校验输出结果&#10;    return 0;&#10;}"></textarea>
+            <textarea id="add_tail" class="code-input" rows="6"
+                placeholder="int main() {&#10;    Solution s;&#10;    // 添加 assert 或 if 校验输出结果&#10;    return 0;&#10;}"></textarea>
         </div>
-        <button onclick="submitNewQuestion()" class="modern-btn btn-primary" style="background-color: #f59e0b;">确认操作</button>
+        <button onclick="submitNewQuestion()" class="modern-btn btn-primary"
+            style="background-color: #f59e0b;">确认操作</button>
     </div>
 
     <div id="history_modal" class="modal-large" style="width: 800px; max-height: 80vh;">
