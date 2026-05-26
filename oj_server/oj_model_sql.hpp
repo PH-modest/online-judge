@@ -29,6 +29,14 @@ namespace ns_model
         int pass_count;     // 题目的总通过次数
     };
 
+    struct StudentQuestionDetail
+{
+    int user_id;
+    std::string username;
+    bool passed;
+    std::string pass_time;
+};
+
     struct Submission
     {
         int user_id;
@@ -424,11 +432,11 @@ namespace ns_model
             mysql_set_character_set(my, "utf8");
 
             // 查询指定用户、指定题目的记录，并按照提交时间降序排列
-            std::string sql = "SELECT code, status_code, reason, time_used_ms, mem_used_kb, stderr_msg, submit_time "
-                              "FROM oj_submissions "
-                              "WHERE user_id = " +
-                              std::to_string(user_id) + " AND question_number = '" + number + "' "
-                                                                                              "ORDER BY submit_time DESC";
+            std::string sql = "SELECT code, status_code, reason, time_used_ms, mem_used_kb, stderr_msg, submit_time, assignment_id "
+                  "FROM oj_submissions "
+                  "WHERE user_id = " +
+                  std::to_string(user_id) + " AND question_number = '" + number + "' "
+                  "ORDER BY submit_time DESC";                                                         "ORDER BY submit_time DESC";
 
             if (0 != mysql_query(my, sql.c_str()))
             {
@@ -454,6 +462,7 @@ namespace ns_model
                     s.mem_used_kb = row[4] ? atoi(row[4]) : 0;
                     s.stderr_msg = row[5] ? row[5] : "";
                     s.submit_time = row[6] ? row[6] : ""; // 提取时间戳字符串
+                    s.assignment_id = row[7] ? atoi(row[7]) : 0;
                     subs->push_back(s);
                 }
                 mysql_free_result(res);
@@ -1091,6 +1100,63 @@ namespace ns_model
             mysql_close(my);
             return ret == 0;
         }
+
+        // 获取某个题单中某道题的学生完成详情
+bool GetAssignmentQuestionStudentDetails(int assign_id, const std::string &q_number,
+                                         std::vector<StudentQuestionDetail> *details)
+{
+    details->clear();
+
+    MYSQL *my = mysql_init(nullptr);
+    if (nullptr == mysql_real_connect(my, host.c_str(), user.c_str(), passwd.c_str(), db.c_str(), port, nullptr, 0))
+        return false;
+    mysql_set_character_set(my, "utf8");
+
+    // q_number 来自 /api/assignment/(\d+)/question/(\d+)/students，已经由路由限制为数字
+    std::string sql =
+        "SELECT u.id, u.username, "
+        "CASE WHEN COUNT(s.id) > 0 THEN 1 ELSE 0 END AS passed, "
+        "IFNULL(MAX(s.submit_time), '') AS pass_time "
+        "FROM oj_assignments a "
+        "JOIN oj_assignment_questions aq ON aq.assignment_id = a.id AND aq.question_number = " + q_number + " "
+        "JOIN oj_classes c ON a.class_id = c.id "
+        "JOIN oj_class_members cm ON cm.class_id = c.id "
+        "AND cm.status = 1 AND cm.user_id != c.creator_id "
+        "JOIN oj_users u ON u.id = cm.user_id "
+        "LEFT JOIN oj_submissions s ON s.user_id = u.id "
+        "AND s.question_number = '" + q_number + "' "
+        "AND s.status_code = 0 "
+        "AND (a.type = 0 OR (a.type = 1 AND s.assignment_id = a.id)) "
+        "WHERE a.id = " + std::to_string(assign_id) + " "
+        "GROUP BY u.id, u.username "
+        "ORDER BY passed DESC, u.username ASC";
+
+    if (0 != mysql_query(my, sql.c_str()))
+    {
+        LOG(ERROR) << "查询学生做题详情失败: " << mysql_error(my) << "\n";
+        mysql_close(my);
+        return false;
+    }
+
+    MYSQL_RES *res = mysql_store_result(my);
+    if (res)
+    {
+        MYSQL_ROW row;
+        while ((row = mysql_fetch_row(res)) != nullptr)
+        {
+            StudentQuestionDetail item;
+            item.user_id = row[0] ? atoi(row[0]) : 0;
+            item.username = row[1] ? row[1] : "";
+            item.passed = row[2] ? atoi(row[2]) == 1 : false;
+            item.pass_time = row[3] ? row[3] : "";
+            details->push_back(item);
+        }
+        mysql_free_result(res);
+    }
+
+    mysql_close(my);
+    return true;
+}
 
         // 获取所有题目的简要信息（支持关键词模糊搜索题号或标题）
         bool GetAllQuestionsBrief(std::vector<Question> *q, const std::string &keyword = "")

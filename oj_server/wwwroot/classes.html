@@ -675,6 +675,36 @@
         <div style="text-align: right; margin-top: 15px;"><button class="btn btn-outline"
                 onclick="closeAllModals()">关闭页面</button></div>
     </div>
+
+    <div id="student_detail_modal" class="custom-modal" style="width: 700px;">
+    <h3>📊 学生做题详情：<span id="detail_question_title">加载中...</span></h3>
+
+    <div id="detail_summary"
+        style="margin-bottom: 15px; padding: 12px 15px; background: #f8fafc; border-radius: 8px; color: #555; font-size: 14px;">
+        正在加载统计信息...
+    </div>
+
+    <div style="display: flex; gap: 20px;">
+        <div style="flex: 1;">
+            <h4 style="color: #10b981; margin-bottom: 10px;">已完成</h4>
+            <div id="passed_students_box"
+                style="border: 1px solid #eee; border-radius: 8px; min-height: 180px; max-height: 300px; overflow-y: auto;">
+            </div>
+        </div>
+
+        <div style="flex: 1;">
+            <h4 style="color: #ef4444; margin-bottom: 10px;">未完成</h4>
+            <div id="unpassed_students_box"
+                style="border: 1px solid #eee; border-radius: 8px; min-height: 180px; max-height: 300px; overflow-y: auto;">
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-actions" style="margin-top: 20px;">
+        <button class="btn btn-outline" onclick="closeAllModals()">关闭</button>
+    </div>
+</div>
+
     <div id="toast_container"></div>
 
     <div id="modal_overlay" class="modal-overlay" onclick="closeAddModal()"></div>
@@ -1232,6 +1262,70 @@
             });
         }
 
+        function openStudentDetail(assignId, qNumber) {
+    openModal('student_detail_modal');
+
+    document.getElementById('detail_question_title').innerText = "题号 " + qNumber;
+    document.getElementById('detail_summary').innerText = "正在加载统计信息...";
+    document.getElementById('passed_students_box').innerHTML =
+        '<div style="padding: 20px; text-align:center; color:#999;">加载中...</div>';
+    document.getElementById('unpassed_students_box').innerHTML =
+        '<div style="padding: 20px; text-align:center; color:#999;">加载中...</div>';
+
+    fetch(`/api/assignment/${assignId}/question/${qNumber}/students`, {
+        headers: { 'Authorization': localStorage.getItem("oj_token") }
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status < 0) {
+                showToast(data.reason || "获取详情失败", "error");
+                closeAllModals();
+                return;
+            }
+
+            let total = data.total_count || 0;
+            let passed = data.passed_count || 0;
+            let pct = total === 0 ? 0 : Math.round((passed / total) * 100);
+
+            document.getElementById('detail_summary').innerHTML =
+                `完成情况：<b style="color:#20b597;">${passed}</b> / ${total} 人，
+                 完成率：<b style="color:#f59e0b;">${pct}%</b>`;
+
+            let passedHtml = '';
+            if (!data.passed || data.passed.length === 0) {
+                passedHtml = '<div style="padding: 25px; text-align:center; color:#999;">暂无学生完成</div>';
+            } else {
+                data.passed.forEach(s => {
+                    passedHtml += `
+                        <div style="padding: 12px 15px; border-bottom: 1px solid #eee;">
+                            <strong style="color:#20b597;">${s.username}</strong>
+                            <div style="font-size: 12px; color:#999; margin-top: 4px;">通过时间：${s.pass_time || '-'}</div>
+                        </div>`;
+                });
+            }
+
+            let unpassedHtml = '';
+            if (!data.unpassed || data.unpassed.length === 0) {
+                unpassedHtml = '<div style="padding: 25px; text-align:center; color:#999;">全部学生已完成</div>';
+            } else {
+                data.unpassed.forEach(s => {
+                    unpassedHtml += `
+                        <div style="padding: 12px 15px; border-bottom: 1px solid #eee;">
+                            <strong style="color:#555;">${s.username}</strong>
+                            <span class="badge-undo" style="float:right; margin-right:0;">未完成</span>
+                        </div>`;
+                });
+            }
+
+            document.getElementById('passed_students_box').innerHTML = passedHtml;
+            document.getElementById('unpassed_students_box').innerHTML = unpassedHtml;
+        })
+        .catch(() => {
+            showToast("网络异常，无法获取学生详情", "error");
+            closeAllModals();
+        });
+}
+
         // 注入可视化进度条逻辑
         function openAssignmentDetail(assignId) {
             switchView('view_assignment_detail');
@@ -1259,13 +1353,18 @@
                         let passCount = q.pass_count || 0;
                         let pct = totalStudents === 0 ? 0 : Math.round((passCount / totalStudents) * 100);
                         let progressHtml = `
-                        <div style="font-size: 12px; color: #666; margin-bottom: 5px;">
-                            完成人数: <span style="font-weight:bold; color:#20b597;">${passCount}</span> / ${totalStudents} (<span style="color:#f59e0b;">${pct}%</span>)
-                        </div>
-                        <div style="width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
-                            <div style="width: ${pct}%; height: 100%; background: linear-gradient(90deg, #34d399, #10b981); transition: width 0.5s;"></div>
-                        </div>
-                    `;
+<div style="font-size: 12px; color: #666; margin-bottom: 5px;">
+    完成人数: <span style="font-weight:bold; color:#20b597;">${passCount}</span> / ${totalStudents} (<span style="color:#f59e0b;">${pct}%</span>)
+</div>
+<div style="width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
+    <div style="width: ${pct}%; height: 100%; background: linear-gradient(90deg, #34d399, #10b981); transition: width 0.5s;"></div>
+</div>
+<button class="btn btn-outline"
+    style="padding: 4px 10px; font-size: 12px; color:#20b597; border-color:#20b597;"
+    onclick="openStudentDetail(${data.assign_id}, ${q.number})">
+    查看明细
+</button>
+`;
 
                         html += `<tr>
                                 <td>${q.number}</td>

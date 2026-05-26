@@ -1134,6 +1134,47 @@ int main()
         rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8"); 
     });
 
+// 获取某个题单中某道题的学生完成详情
+svr.Get(R"(/api/assignment/(\d+)/question/(\d+)/students)", [&ctrl](const Request &req, Response &rsp)
+        {
+    Json::Value rsp_json;
+    Json::FastWriter writer;
+
+    if (!req.has_header("Authorization"))
+    {
+        rsp_json["status"] = -2;
+        rsp_json["reason"] = "未登录，无法查看学生完成详情";
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+        return;
+    }
+
+    std::string token = req.get_header_value("Authorization");
+    int user_id = 0, role = 0;
+    std::string username = "";
+
+    if (!ns_util::JwtUtil::VerifyToken(token, &user_id, &username, &role))
+    {
+        rsp_json["status"] = -2;
+        rsp_json["reason"] = "登录凭证无效或已过期";
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+        return;
+    }
+
+    int assign_id = std::stoi(req.matches[1]);
+    std::string q_number = req.matches[2];
+
+    std::string result_json;
+    if (ctrl.GetAssignmentQuestionStudentDetails(assign_id, q_number, &result_json))
+    {
+        rsp.set_content(result_json, "application/json;charset=utf-8");
+    }
+    else
+    {
+        rsp_json["status"] = -1;
+        rsp_json["reason"] = "获取学生完成详情失败";
+        rsp.set_content(writer.write(rsp_json), "application/json;charset=utf-8");
+    } });
+
 
     svr.set_base_dir("./wwwroot");
     svr.listen("0.0.0.0", 8102);

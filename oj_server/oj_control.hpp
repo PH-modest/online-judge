@@ -822,6 +822,50 @@ namespace ns_control
             return true;
         }
 
+        // 获取某个题单中某道题的学生完成详情
+bool GetAssignmentQuestionStudentDetails(int assign_id, const std::string &q_number,
+                                         std::string *out_json)
+{
+    std::vector<ns_model::StudentQuestionDetail> details;
+    if (!_model.GetAssignmentQuestionStudentDetails(assign_id, q_number, &details))
+        return false;
+
+    Json::Value root;
+    Json::Value passed_arr(Json::arrayValue);
+    Json::Value unpassed_arr(Json::arrayValue);
+
+    int passed_count = 0;
+
+    for (const auto &d : details)
+    {
+        Json::Value item;
+        item["user_id"] = d.user_id;
+        item["username"] = d.username;
+
+        if (d.passed)
+        {
+            item["pass_time"] = d.pass_time;
+            passed_arr.append(item);
+            passed_count++;
+        }
+        else
+        {
+            unpassed_arr.append(item);
+        }
+    }
+
+    root["status"] = 0;
+    root["question_number"] = q_number;
+    root["passed_count"] = passed_count;
+    root["total_count"] = (int)details.size();
+    root["passed"] = passed_arr;
+    root["unpassed"] = unpassed_arr;
+
+    Json::FastWriter writer;
+    *out_json = writer.write(root);
+    return true;
+}
+
         // 个人中心业务逻辑
         bool GetProfileExtras(int user_id, Json::Value* data) {
             (*data)["total_questions"] = _model.GetTotalQuestionCount();
