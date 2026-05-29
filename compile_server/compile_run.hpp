@@ -40,6 +40,9 @@ namespace ns_compile_and_run
                 // desc = "代码编译时发生错误";
                 FileUtil::ReadFile(PathUtil::CompileError(file_name), &desc, true);
                 break;
+            case 1:
+                desc = "运行错误：程序异常退出";
+                break;
             case SIGABRT: // 6
             case SIGSEGV: // 11
                 desc = "运行错误：内存越界或段错误";
@@ -65,6 +68,10 @@ namespace ns_compile_and_run
             std::string file_src = PathUtil::Src(file_name);
             if (FileUtil::IsFileExist(file_src))
                 unlink(file_src.c_str());
+
+            std::string file_py_src = PathUtil::PySrc(file_name);
+            if (FileUtil::IsFileExist(file_py_src))
+                unlink(file_py_src.c_str());
 
             std::string file_compiler_error = PathUtil::CompileError(file_name);
             if (FileUtil::IsFileExist(file_compiler_error))
@@ -111,7 +118,14 @@ namespace ns_compile_and_run
             reader.parse(in_json, in_value); // 最后再处理差错问题
 
             std::string code = in_value["code"].asString();
-            std::string input = in_value["input"].asString();
+            std::string input = in_value.isMember("input") ? in_value["input"].asString() : "";
+            std::string language = in_value.isMember("language") ? in_value["language"].asString() : "cpp";
+
+            if (language != "python")
+            {
+                language = "cpp";
+            }
+
             int cpu_limit = in_value["cpu_limit"].asInt();
             int mem_limit = in_value["mem_limit"].asInt();
 
@@ -132,21 +146,43 @@ namespace ns_compile_and_run
             // 形成的文件名只具有唯一性，没有目录没有后缀
             file_name = FileUtil::UniqFileName();
 
-            // 形成临时src文件
-            if (!FileUtil::WriteFile(PathUtil::Src(file_name), code))
-            {
-                status_code = -2; // 未知错误
-                goto END;
-            }
+            // 写入标准输入文件。当前核心函数模式一般为空，保留该逻辑方便后续扩展 ACM 模式。
+            FileUtil::WriteFile(PathUtil::Stdin(file_name), input);
 
-            if (!Compiler::Compile(file_name))
+            if (language == "cpp")
             {
-                // 编译失败
-                status_code = -3; // 代码编译的时候发生了错误
-                goto END;
-            }
+                // C/C++：写入 .cpp 文件，调用 g++ 编译，再运行 .exe
+                if (!FileUtil::WriteFile(PathUtil::Src(file_name), code))
+                {
+                    status_code = -2;
+                    goto END;
+                }
 
-            run_result = Runner::Run(file_name, cpu_limit, mem_limit, &time_used_ms, &mem_used_kb);
+                if (!Compiler::Compile(file_name))
+                {
+                    status_code = -3;
+                    goto END;
+                }
+
+                run_result = Runner::Run(file_name, cpu_limit, mem_limit, &time_used_ms, &mem_used_kb);
+            }
+            else if (language == "python")
+            {
+                // Python：写入 .py 文件，先做语法检查，再用 python3 运行
+                if (!FileUtil::WriteFile(PathUtil::PySrc(file_name), code))
+                {
+                    status_code = -2;
+                    goto END;
+                }
+
+                if (!Compiler::CompilePython(file_name))
+                {
+                    status_code = -3;
+                    goto END;
+                }
+
+                run_result = Runner::RunPython(file_name, cpu_limit, mem_limit, &time_used_ms, &mem_used_kb);
+            }
             if (run_result < 0)
             {
                 status_code = -2; // 未知错误
@@ -165,6 +201,7 @@ namespace ns_compile_and_run
         END:
             out_value["status"] = status_code;
             out_value["reason"] = CodeToDesc(status_code, file_name);
+            out_value["language"] = language;
 
             out_value["time_used_ms"] = time_used_ms;
             out_value["mem_used_kb"] = mem_used_kb;

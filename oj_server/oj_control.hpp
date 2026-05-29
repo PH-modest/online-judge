@@ -320,11 +320,50 @@ namespace ns_control
 
             // 重新拼接用户代码+测试用例代码，形成新的代码
             std::string code = in_value["code"].asString();
+
+            std::string language = "cpp";
+            if (in_value.isMember("language") && in_value["language"].asString() == "python")
+            {
+                language = "python";
+            }
+
             Json::Value compile_value;
-            compile_value["input"] = in_value["input"].asString();
-            compile_value["code"] = code + "\n" + q.tail;
-            compile_value["cpu_limit"] = q.cpu_limit;
-            compile_value["mem_limit"] = q.mem_limit;
+            compile_value["input"] = in_value.isMember("input") ? in_value["input"].asString() : "";
+            compile_value["language"] = language;
+
+            // 用于后面判断 TLE / MLE，Python 会适当放宽最低资源限制
+            int judge_cpu_limit = q.cpu_limit;
+            int judge_mem_limit = q.mem_limit;
+
+            if (language == "python")
+            {
+                if (q.py_tail.empty())
+                {
+                    Json::Value err_value;
+                    err_value["status"] = -4;
+                    err_value["reason"] = "该题暂未配置 Python 测试代码";
+                    err_value["stdout"] = "";
+                    err_value["stderr"] = "";
+                    err_value["language"] = "python";
+
+                    Json::FastWriter err_writer;
+                    *out_json = err_writer.write(err_value);
+                    return;
+                }
+
+                compile_value["code"] = code + "\n" + q.py_tail;
+
+                // Python 解释器启动本身需要更多资源，避免默认 1 秒和 50000KB 太紧
+                judge_cpu_limit = q.cpu_limit < 2 ? 2 : q.cpu_limit;
+                judge_mem_limit = q.mem_limit < 128000 ? 128000 : q.mem_limit;
+            }
+            else
+            {
+                compile_value["code"] = code + "\n" + q.tail;
+            }
+            compile_value["cpu_limit"] = judge_cpu_limit;
+            compile_value["mem_limit"] = judge_mem_limit;
+
             Json::FastWriter writer;
             std::string compile_string = writer.write(compile_value);
 
@@ -364,12 +403,12 @@ namespace ns_control
                             int time_used_ms = out_value["time_used_ms"].asInt();
                             int mem_used_kb = out_value["mem_used_kb"].asInt();
 
-                            if (status == 24 || time_used_ms >= q.cpu_limit * 1000)
+                            if (status == 24 || time_used_ms >= judge_cpu_limit * 1000)
                             {
                                 status = -1; // 业务状态置负
                                 reason = "TLE";
                             }
-                            else if (mem_used_kb >= q.mem_limit * 0.8 || ((status == 6 || status == 11) && mem_used_kb >= q.mem_limit * 0.5))
+                            else if (mem_used_kb >= judge_mem_limit * 0.8 || ((status == 6 || status == 11) && mem_used_kb >= judge_mem_limit * 0.5))
                             {
                                 status = -1; // 业务状态置负
                                 reason = "MLE";
@@ -410,6 +449,7 @@ namespace ns_control
                             // 将规范化后的状态写回 JSON
                             out_value["status"] = status;
                             out_value["reason"] = reason;
+                            out_value["language"] = language;
 
                             Json::FastWriter writer;
                             *out_json = writer.write(out_value); // 覆盖原有结果，传给上一层(oj_server.cc)和前端
@@ -421,6 +461,7 @@ namespace ns_control
                                 sub.user_id = user_id;
                                 sub.question_number = number;
                                 sub.code = code;
+                                sub.language = language;
                                 sub.status_code = status; // 存入标准状态码
                                 sub.reason = reason;      // 存入标准标识
                                 sub.time_used_ms = out_value["time_used_ms"].asInt();
@@ -463,6 +504,7 @@ namespace ns_control
             {
                 Json::Value item;
                 item["code"] = s.code;
+                item["language"] = s.language.empty() ? "cpp" : s.language;
                 item["status_code"] = s.status_code;
                 item["reason"] = s.reason;
                 item["time_used_ms"] = s.time_used_ms;
@@ -814,6 +856,8 @@ namespace ns_control
             root["desc"] = q.desc;
             root["header"] = q.header;
             root["tail"] = q.tail;
+            root["py_header"] = q.py_header;
+            root["py_tail"] = q.py_tail;
             root["cpu_limit"] = q.cpu_limit;
             root["mem_limit"] = q.mem_limit;
 
