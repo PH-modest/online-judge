@@ -474,6 +474,18 @@
             <label>测试用例 (Tail) - 隐藏在后台用于校验的 main 函数</label>
             <textarea id="add_tail" class="code-input" rows="6" placeholder="int main() {&#10;    Solution s;&#10;    // 添加 assert 或 if 校验输出结果&#10;    return 0;&#10;}"></textarea>
         </div>
+
+        <div class="form-group">
+            <label>Python 预设代码 (py_header) - 展现给用户的初始代码</label>
+            <textarea id="add_py_header" class="code-input" rows="4"
+                placeholder="class Solution:&#10;    def add(self, a, b):&#10;        pass"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Python 测试用例 (py_tail) - 隐藏在后台用于校验</label>
+            <textarea id="add_py_tail" class="code-input" rows="6"
+                placeholder="if __name__ == &quot;__main__&quot;:&#10;    s = Solution()&#10;    if s.add(1, 2) == 3:&#10;        print(&quot;AC&quot;)&#10;    else:&#10;        print(&quot;WA&quot;)"></textarea>
+        </div>
         
         <button onclick="submitNewQuestion()" class="modern-btn btn-primary" style="background-color: #f59e0b;">确认操作</button>
     </div>
@@ -489,13 +501,21 @@
         }
 
         function closeAddModal() {
-            let overlay = document.getElementById('modal_overlay');
-            if(overlay) overlay.style.display = 'none';
+            document.getElementById('modal_overlay').style.display = 'none';
             document.getElementById('add_question_modal').style.display = 'none';
-            
-            // 关闭时清空一下输入框
+
             document.getElementById('add_title').value = '';
             document.getElementById('add_desc').value = '';
+            document.getElementById('add_header').value = '';
+            document.getElementById('add_tail').value = '';
+
+            if (document.getElementById('add_py_header')) {
+                document.getElementById('add_py_header').value = '';
+            }
+
+            if (document.getElementById('add_py_tail')) {
+                document.getElementById('add_py_tail').value = '';
+            }
         }
 
         function submitNewQuestion() {
@@ -504,11 +524,13 @@
             let desc = document.getElementById("add_desc").value.trim();
             let header = document.getElementById("add_header").value.trim();
             let tail = document.getElementById("add_tail").value.trim();
+            let py_header = document.getElementById("add_py_header").value.trim();
+            let py_tail = document.getElementById("add_py_tail").value.trim();
             let cpu = document.getElementById("add_cpu").value;
             let mem = document.getElementById("add_mem").value;
 
-            if (!title || !desc || !header || !tail) {
-                $msg.warning("请完整填写标题、描述及代码片段！"); 
+            if (!title || !desc || !header || !tail || !py_header || !py_tail) {
+                showToast("请完整填写标题、描述、C/C++模板和 Python 模板！", "warning");
                 return;
             }
 
@@ -521,8 +543,15 @@
                     'Authorization': token
                 },
                 body: JSON.stringify({
-                    title: title, star: star, desc: desc, header: header, tail: tail,
-                    cpu_limit: parseInt(cpu), mem_limit: parseInt(mem)
+                    title: title,
+                    star: star,
+                    desc: desc,
+                    header: header,
+                    tail: tail,
+                    py_header: py_header,
+                    py_tail: py_tail,
+                    cpu_limit: parseInt(cpu),
+                    mem_limit: parseInt(mem)
                 })
             })
             .then(response => response.json())

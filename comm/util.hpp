@@ -85,6 +85,12 @@ namespace ns_util
         {
             return AddSuffix(file_name, ".cpp");
         }
+        // 构建 Python 源文件完整路径+后缀名
+        // test -> ./temp/test.py
+        static std::string PySrc(const std::string &file_name)
+        {
+            return AddSuffix(file_name, ".py");
+        }
         // 构建可执行文件完整路径+后缀名
         static std::string Exe(const std::string &file_name)
         {

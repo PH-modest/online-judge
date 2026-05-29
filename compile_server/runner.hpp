@@ -144,5 +144,95 @@ namespace ns_runner
                 return status & 0x7f;
             }
         }
+
+        static int RunPython(const std::string &file_name, int cpu_limit, int mem_limit, int *time_used_ms, int *mem_used_kb)
+        {
+            std::string _py_src = PathUtil::PySrc(file_name);
+            std::string _stdin = PathUtil::Stdin(file_name);
+            std::string _stdout = PathUtil::Stdout(file_name);
+            std::string _stderr = PathUtil::Stderr(file_name);
+
+            umask(0);
+            int _stdin_fd = open(_stdin.c_str(), O_CREAT | O_RDONLY, 0644);
+            int _stdout_fd = open(_stdout.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
+            int _stderr_fd = open(_stderr.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
+
+            if (_stdin_fd < 0 || _stderr_fd < 0 || _stdout_fd < 0)
+            {
+                LOG(ERROR) << "运行 Python 时打开标准文件失败\n";
+                return -1;
+            }
+
+            pid_t pid = fork();
+            if (pid < 0)
+            {
+                close(_stdin_fd);
+                close(_stdout_fd);
+                close(_stderr_fd);
+                LOG(ERROR) << "运行 Python 时创建子进程失败\n";
+                return -2;
+            }
+            else if (pid == 0)
+            {
+                dup2(_stdin_fd, 0);
+                dup2(_stdout_fd, 1);
+                dup2(_stderr_fd, 2);
+
+                SetProcLimit(cpu_limit, mem_limit);
+                SetSeccomp();
+
+                execlp("python3", "python3", _py_src.c_str(), nullptr);
+
+                LOG(ERROR) << "启动 python3 失败\n";
+                exit(2);
+            }
+            else
+            {
+                close(_stdin_fd);
+                close(_stdout_fd);
+                close(_stderr_fd);
+
+                int status = 0;
+                struct rusage ru;
+                wait4(pid, &status, 0, &ru);
+
+                if (time_used_ms)
+                {
+                    *time_used_ms =
+                        (ru.ru_utime.tv_sec * 1000 + ru.ru_utime.tv_usec / 1000) +
+                        (ru.ru_stime.tv_sec * 1000 + ru.ru_stime.tv_usec / 1000);
+                }
+
+                if (mem_used_kb)
+                {
+                    *mem_used_kb = ru.ru_maxrss;
+                }
+
+                LOG(INFO) << "Python 运行完毕, info:"
+                          << " 耗时:" << (time_used_ms ? *time_used_ms : 0)
+                          << "ms 内存:" << (mem_used_kb ? *mem_used_kb : 0)
+                          << "KB\n";
+
+                if (WIFSIGNALED(status))
+                {
+                    return WTERMSIG(status);
+                }
+
+                if (WIFEXITED(status))
+                {
+                    int exit_code = WEXITSTATUS(status);
+                    if (exit_code == 0)
+                    {
+                        return 0;
+                    }
+
+                    // Python 代码运行时异常，例如 NameError、TypeError、ZeroDivisionError 等
+                    // 这里返回 1，后续由 compile_run.hpp 转成 RE。
+                    return 1;
+                }
+
+                return -2;
+            }
+        }
     };
 }

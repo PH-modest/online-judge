@@ -23,6 +23,8 @@ namespace ns_model
         std::string desc;   // 题目的描述
         std::string header; // 题目预设的代码
         std::string tail;   // 题目的测试用例，需要和header拼接，形成完整代码
+        std::string py_header;  // Python 预设代码
+        std::string py_tail;    // Python 测试用例，需要和 py_header 拼接，形成完整代码
         int cpu_limit;      // 题目的时间要求（S）
         int mem_limit;      // 题目的空间要求（KB）
         int submit_count;   // 题目的总提交次数
@@ -42,6 +44,7 @@ namespace ns_model
         int user_id;
         std::string question_number;
         std::string code;
+        std::string language;
         int status_code;
         std::string reason;
         int time_used_ms;
@@ -93,6 +96,8 @@ namespace ns_model
     };
 
     const std::string oj_questions = "oj_questions";
+    const std::string question_fields =
+    "number,title,star,`desc`,header,tail,py_header,py_tail,cpu_limit,mem_limit,submit_count,pass_count";
     const std::string host = "49.234.42.200";
     const std::string user = "oj_client";
     const std::string passwd = "Hph2003123148..";
@@ -142,16 +147,20 @@ namespace ns_model
             for (int i = 0; i < rows; i++)
             {
                 MYSQL_ROW row = mysql_fetch_row(res);
-                q.number = row[0];
-                q.title = row[1];
-                q.star = row[2];
-                q.desc = row[3];
-                q.header = row[4];
-                q.tail = row[5];
-                q.cpu_limit = row[6] ? atoi(row[6]) : 1;
-                q.mem_limit = row[7] ? atoi(row[7]) : 50000;
-                q.submit_count = row[8] ? atoi(row[8]) : 0;
-                q.pass_count = row[9] ? atoi(row[9]) : 0;
+                q.number = row[0] ? row[0] : "";
+                q.title = row[1] ? row[1] : "";
+                q.star = row[2] ? row[2] : "";
+                q.desc = row[3] ? row[3] : "";
+
+                q.header = row[4] ? row[4] : "";
+                q.tail = row[5] ? row[5] : "";
+                q.py_header = row[6] ? row[6] : "";
+                q.py_tail = row[7] ? row[7] : "";
+
+                q.cpu_limit = row[8] ? atoi(row[8]) : 1;
+                q.mem_limit = row[9] ? atoi(row[9]) : 50000;
+                q.submit_count = row[10] ? atoi(row[10]) : 0;
+                q.pass_count = row[11] ? atoi(row[11]) : 0;
 
                 out->push_back(q);
             }
@@ -167,7 +176,7 @@ namespace ns_model
         bool GetAllQuestions(std::vector<Question> *out, const std::string &star = "", const std::string &keyword = "")
         {
             // 使用 WHERE 1=1 方便后续灵活拼接 AND 条件
-            std::string sql = "SELECT * FROM " + oj_questions + " WHERE 1=1";
+            std::string sql = "SELECT " + question_fields + " FROM " + oj_questions + " WHERE 1=1";
 
             if (star == "简单" || star == "中等" || star == "困难")
             {
@@ -199,9 +208,9 @@ namespace ns_model
         bool GetOneQuestion(const std::string &number, Question *q)
         {
             bool res = false;
-            std::string sql = "select * from ";
+            std::string sql = "SELECT " + question_fields + " FROM ";
             sql += oj_questions;
-            sql += " where number=";
+            sql += " WHERE number=";
             sql += number;
             std::vector<Question> result;
             if (QueryMySql(sql, &result))
@@ -317,12 +326,16 @@ namespace ns_model
             char *esc_desc = new char[q.desc.length() * 2 + 1];
             char *esc_header = new char[q.header.length() * 2 + 1];
             char *esc_tail = new char[q.tail.length() * 2 + 1];
+            char *esc_py_header = new char[q.py_header.length() * 2 + 1];
+            char *esc_py_tail = new char[q.py_tail.length() * 2 + 1];
 
             mysql_real_escape_string(my, esc_title, q.title.c_str(), q.title.length());
             mysql_real_escape_string(my, esc_desc, q.desc.c_str(), q.desc.length());
             mysql_real_escape_string(my, esc_header, q.header.c_str(), q.header.length());
             mysql_real_escape_string(my, esc_tail, q.tail.c_str(), q.tail.length());
-
+            mysql_real_escape_string(my, esc_py_header, q.py_header.c_str(), q.py_header.length());
+            mysql_real_escape_string(my, esc_py_tail, q.py_tail.c_str(), q.py_tail.length());
+            
             // 查重
             std::string check_sql = "SELECT number FROM oj_questions WHERE title = '" + std::string(esc_title) + "'";
             if (mysql_query(my, check_sql.c_str()) == 0)
@@ -342,6 +355,8 @@ namespace ns_model
                         delete[] esc_desc;
                         delete[] esc_header;
                         delete[] esc_tail;
+                        delete[] esc_py_header;
+                        delete[] esc_py_tail;
                         mysql_close(my);
 
                         return false; // 返回 false 告诉 Controller 插入失败
@@ -350,7 +365,11 @@ namespace ns_model
             }
 
             // desc 是 MySQL 的关键字，必须加反引号 `desc` 才能作为列名使用
-            std::string sql_query = "INSERT INTO oj_questions (title, star, `desc`, header, tail, cpu_limit, mem_limit) VALUES ('";
+            std::string sql_query =
+                "INSERT INTO oj_questions "
+                "(title, star, `desc`, header, tail, py_header, py_tail, cpu_limit, mem_limit) "
+                "VALUES ('";
+
             sql_query += esc_title;
             sql_query += "', '";
             sql_query += q.star;
@@ -360,6 +379,10 @@ namespace ns_model
             sql_query += esc_header;
             sql_query += "', '";
             sql_query += esc_tail;
+            sql_query += "', '";
+            sql_query += esc_py_header;
+            sql_query += "', '";
+            sql_query += esc_py_tail;
             sql_query += "', ";
             sql_query += std::to_string(q.cpu_limit);
             sql_query += ", ";
@@ -377,7 +400,8 @@ namespace ns_model
             delete[] esc_desc;
             delete[] esc_header;
             delete[] esc_tail;
-
+            delete[] esc_py_header;
+            delete[] esc_py_tail;
             mysql_close(my);
             return res == 0;
         }
@@ -398,11 +422,15 @@ namespace ns_model
             mysql_real_escape_string(my, esc_reason, sub.reason.c_str(), sub.reason.length());
             mysql_real_escape_string(my, esc_stderr, sub.stderr_msg.c_str(), sub.stderr_msg.length());
 
-            std::string sql = "INSERT INTO oj_submissions (user_id, question_number, assignment_id, code, status_code, reason, time_used_ms, mem_used_kb, stderr_msg) VALUES (";
+            std::string submit_language = (sub.language == "python") ? "python" : "cpp";
+
+            std::string sql = "INSERT INTO oj_submissions (user_id, question_number, assignment_id, code, language, status_code, reason, time_used_ms, mem_used_kb, stderr_msg) VALUES (";
             sql += std::to_string(sub.user_id) + ", '";
             sql += sub.question_number + "', ";
             sql += std::to_string(sub.assignment_id) + ", '";
             sql += esc_code;
+            sql += "', '";
+            sql += submit_language;
             sql += "', ";
             sql += std::to_string(sub.status_code) + ", '";
             sql += esc_reason;
@@ -432,7 +460,7 @@ namespace ns_model
             mysql_set_character_set(my, "utf8");
 
             // 查询指定用户、指定题目的记录，并按照提交时间降序排列
-            std::string sql = "SELECT code, status_code, reason, time_used_ms, mem_used_kb, stderr_msg, submit_time, assignment_id "
+            std::string sql = "SELECT code, language, status_code, reason, time_used_ms, mem_used_kb, stderr_msg, submit_time "
                   "FROM oj_submissions "
                   "WHERE user_id = " +
                   std::to_string(user_id) + " AND question_number = '" + number + "' "
@@ -456,13 +484,16 @@ namespace ns_model
                     s.user_id = user_id;
                     s.question_number = number;
                     s.code = row[0] ? row[0] : "";
-                    s.status_code = row[1] ? atoi(row[1]) : 0;
-                    s.reason = row[2] ? row[2] : "";
-                    s.time_used_ms = row[3] ? atoi(row[3]) : 0;
-                    s.mem_used_kb = row[4] ? atoi(row[4]) : 0;
-                    s.stderr_msg = row[5] ? row[5] : "";
-                    s.submit_time = row[6] ? row[6] : ""; // 提取时间戳字符串
-                    s.assignment_id = row[7] ? atoi(row[7]) : 0;
+                    s.language = row[1] ? row[1] : "cpp";
+                    if (s.language != "python") s.language = "cpp";
+
+                    s.status_code = row[2] ? atoi(row[2]) : 0;
+                    s.reason = row[3] ? row[3] : "";
+                    s.time_used_ms = row[4] ? atoi(row[4]) : 0;
+                    s.mem_used_kb = row[5] ? atoi(row[5]) : 0;
+                    s.stderr_msg = row[6] ? row[6] : "";
+                    s.submit_time = row[7] ? row[7] : "";
+                    s.assignment_id = row[8] ? atoi(row[8]) : 0;
                     subs->push_back(s);
                 }
                 mysql_free_result(res);
@@ -955,11 +986,15 @@ namespace ns_model
             char *esc_desc = new char[q.desc.length() * 2 + 1];
             char *esc_header = new char[q.header.length() * 2 + 1];
             char *esc_tail = new char[q.tail.length() * 2 + 1];
+            char *esc_py_header = new char[q.py_header.length() * 2 + 1];
+            char *esc_py_tail = new char[q.py_tail.length() * 2 + 1];
 
             mysql_real_escape_string(my, esc_title, q.title.c_str(), q.title.length());
             mysql_real_escape_string(my, esc_desc, q.desc.c_str(), q.desc.length());
             mysql_real_escape_string(my, esc_header, q.header.c_str(), q.header.length());
             mysql_real_escape_string(my, esc_tail, q.tail.c_str(), q.tail.length());
+            mysql_real_escape_string(my, esc_py_header, q.py_header.c_str(), q.py_header.length());
+            mysql_real_escape_string(my, esc_py_tail, q.py_tail.c_str(), q.py_tail.length());
 
             std::string sql = "UPDATE oj_questions SET title='";
             sql += esc_title;
@@ -971,6 +1006,10 @@ namespace ns_model
             sql += esc_header;
             sql += "', tail='";
             sql += esc_tail;
+            sql += "', py_header='";
+            sql += esc_py_header;
+            sql += "', py_tail='";
+            sql += esc_py_tail;
             sql += "', cpu_limit=" + std::to_string(q.cpu_limit);
             sql += ", mem_limit=" + std::to_string(q.mem_limit);
             sql += " WHERE number=" + q.number;
@@ -981,6 +1020,8 @@ namespace ns_model
             delete[] esc_desc;
             delete[] esc_header;
             delete[] esc_tail;
+            delete[] esc_py_header;
+            delete[] esc_py_tail;
             mysql_close(my);
             return res == 0;
         }

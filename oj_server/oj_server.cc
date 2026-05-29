@@ -322,6 +322,8 @@ int main()
             q.desc = req_json["desc"].asString();
             q.header = req_json["header"].asString();
             q.tail = req_json["tail"].asString();
+            q.py_header = req_json.isMember("py_header") ? req_json["py_header"].asString() : "";
+            q.py_tail = req_json.isMember("py_tail") ? req_json["py_tail"].asString() : "";
             // 如果前端没有传 cpu/mem limit，给默认值防止解析失败
             q.cpu_limit = req_json.isMember("cpu_limit") ? req_json["cpu_limit"].asInt() : 1;
             q.mem_limit = req_json.isMember("mem_limit") ? req_json["mem_limit"].asInt() : 50000;
@@ -498,6 +500,8 @@ int main()
                 q.desc = new_qs_json[i]["desc"].asString();
                 q.header = new_qs_json[i]["header"].asString();
                 q.tail = new_qs_json[i]["tail"].asString();
+                q.py_header = new_qs_json[i].isMember("py_header") ? new_qs_json[i]["py_header"].asString() : "";
+                q.py_tail = new_qs_json[i].isMember("py_tail") ? new_qs_json[i]["py_tail"].asString() : "";
                 q.cpu_limit = new_qs_json[i].isMember("cpu_limit") ? new_qs_json[i]["cpu_limit"].asInt() : 1;
                 q.mem_limit = new_qs_json[i].isMember("mem_limit") ? new_qs_json[i]["mem_limit"].asInt() : 50000;
                 new_qs.push_back(q);
@@ -791,6 +795,8 @@ int main()
             q.desc = req_json["desc"].asString();
             q.header = req_json["header"].asString();
             q.tail = req_json["tail"].asString();
+            q.py_header = req_json.isMember("py_header") ? req_json["py_header"].asString() : "";
+            q.py_tail = req_json.isMember("py_tail") ? req_json["py_tail"].asString() : "";
             q.cpu_limit = req_json["cpu_limit"].asInt();
             q.mem_limit = req_json["mem_limit"].asInt();
 

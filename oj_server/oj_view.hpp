@@ -61,10 +61,12 @@ namespace ns_view
         {
             // 准备转义后的变量
             std::string encoded_header;
+            std::string encoded_py_header;
             std::string encoded_desc;
 
             // 调用工具类进行转义
             ns_util::HtmlUtil::Encode(q.header, &encoded_header);
+            ns_util::HtmlUtil::Encode(q.py_header,&encoded_py_header);
             ns_util::HtmlUtil::Encode(q.desc, &encoded_desc);
 
             // 形成路径
@@ -76,6 +78,8 @@ namespace ns_view
             root.SetValue("star", q.star);
             root.SetValue("desc", encoded_desc);
             root.SetValue("pre_code", encoded_header);
+            root.SetValue("cpp_pre_code", encoded_header);
+            root.SetValue("py_pre_code", encoded_py_header);
             // 获取网页
             ctemplate::Template *tpl = ctemplate::Template::GetTemplate(src_html, ctemplate::DO_NOT_STRIP);
             // 开始完成渲染功能
